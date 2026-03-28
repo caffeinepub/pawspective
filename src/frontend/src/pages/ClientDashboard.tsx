@@ -23,6 +23,13 @@ function formatDate(ts: bigint): string {
   });
 }
 
+function getStatusKey(status: unknown): string {
+  if (typeof status === "string") return status;
+  if (status !== null && typeof status === "object")
+    return Object.keys(status as object)[0] ?? "";
+  return String(status ?? "");
+}
+
 export default function ClientDashboard({
   navigate,
   initialEmail = "",
@@ -121,7 +128,7 @@ export default function ClientDashboard({
                     <span className="font-display font-bold">
                       #{b.id.toString()}
                     </span>
-                    <StatusBadge status={b.status as string} />
+                    <StatusBadge status={b.status} />
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -133,7 +140,9 @@ export default function ClientDashboard({
                     </span>
                   </div>
                 </div>
-                {["confirmed", "completed"].includes(b.status as string) && (
+                {["confirmed", "completed"].includes(
+                  getStatusKey(b.status),
+                ) && (
                   <div className="px-4 pb-4 border-t border-border pt-3">
                     {b.sitterIds?.map((sid) => (
                       <ServiceLogTimeline
@@ -142,7 +151,7 @@ export default function ClientDashboard({
                         sitterId={sid}
                         sitterName="Sitter"
                         isActive={false}
-                        autoRefresh={(b.status as string) === "confirmed"}
+                        autoRefresh={getStatusKey(b.status) === "confirmed"}
                       />
                     ))}
                   </div>

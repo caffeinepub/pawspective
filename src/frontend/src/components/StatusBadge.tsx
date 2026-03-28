@@ -1,5 +1,13 @@
 interface Props {
-  status: string;
+  status: unknown;
+}
+
+function normalizeStatus(status: unknown): string {
+  if (typeof status === "string") return status;
+  if (status !== null && typeof status === "object") {
+    return Object.keys(status as object)[0] ?? "";
+  }
+  return String(status ?? "");
 }
 
 const map: Record<string, { label: string; cls: string }> = {
@@ -38,8 +46,9 @@ const map: Record<string, { label: string; cls: string }> = {
 };
 
 export default function StatusBadge({ status }: Props) {
-  const cfg = map[status] ?? {
-    label: status,
+  const key = normalizeStatus(status);
+  const cfg = map[key] ?? {
+    label: key || String(status),
     cls: "bg-muted text-muted-foreground border-border",
   };
   return (

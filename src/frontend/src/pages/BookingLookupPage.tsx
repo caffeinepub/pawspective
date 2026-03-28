@@ -23,6 +23,13 @@ function formatDate(ts: bigint): string {
   });
 }
 
+function getStatusKey(status: unknown): string {
+  if (typeof status === "string") return status;
+  if (status !== null && typeof status === "object")
+    return Object.keys(status as object)[0] ?? "";
+  return String(status ?? "");
+}
+
 const PET_EMOJIS: Record<string, string> = {
   Dog: "🐶",
   Cat: "🐱",
@@ -35,7 +42,7 @@ const PET_EMOJIS: Record<string, string> = {
 
 function BookingActivityCard({ booking }: { booking: Public__3 }) {
   const [expanded, setExpanded] = useState(false);
-  const isActive = ["confirmed"].includes(booking.status as string);
+  const isActive = getStatusKey(booking.status) === "confirmed";
 
   const petsLabel =
     booking.pets?.length > 0
@@ -53,7 +60,7 @@ function BookingActivityCard({ booking }: { booking: Public__3 }) {
               <span className="font-display font-bold text-lg">
                 #{booking.id.toString()}
               </span>
-              <StatusBadge status={booking.status as string} />
+              <StatusBadge status={booking.status} />
               {booking.isRecurring && (
                 <Badge
                   variant="outline"
