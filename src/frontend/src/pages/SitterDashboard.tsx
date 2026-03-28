@@ -294,7 +294,7 @@ export default function SitterDashboard({ navigate }: Props) {
           isActive: true,
           services: selectedServices,
         });
-      } else if (bio || location || hourlyRate) {
+      } else {
         await createSitter.mutateAsync({
           name,
           bio,
