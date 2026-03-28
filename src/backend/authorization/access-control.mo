@@ -42,7 +42,8 @@ module {
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
       case (null) {
-        Runtime.trap("User is not registered");
+        // Any authenticated (non-anonymous) user defaults to #user
+        #user;
       };
     };
   };

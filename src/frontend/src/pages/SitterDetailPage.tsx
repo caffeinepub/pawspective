@@ -688,7 +688,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
               {/* Existing pets */}
               {pets.map((pet, idx) => (
                 <div
-                  key={`pet-${idx}-${pet.petName}`}
+                  key={`pet-${idx}`}
                   className="border border-border rounded-xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
@@ -881,7 +881,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                 Your Contact Info
               </h2>
               <p className="text-muted-foreground text-sm">
-                No account needed. We’ll use this to update you on your booking.
+                No account needed. We'll use this to update you on your booking.
               </p>
               <div className="space-y-2">
                 <Label htmlFor="cname">Full Name *</Label>

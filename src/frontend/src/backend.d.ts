@@ -247,6 +247,8 @@ export interface backendInterface {
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    isAdminAssigned(): Promise<boolean>;
+    claimFirstAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
     postServiceLog(input: Creation): Promise<Public__1>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;

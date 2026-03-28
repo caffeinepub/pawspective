@@ -442,3 +442,30 @@ export function useAssignRole() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["is-admin"] }),
   });
 }
+
+export function useIsAdminAssigned() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["is-admin-assigned"],
+    queryFn: async () => {
+      if (!actor) return true; // default to true (safe fallback)
+      return actor.isAdminAssigned();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useClaimFirstAdmin() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.claimFirstAdmin();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["is-admin"] });
+      qc.invalidateQueries({ queryKey: ["is-admin-assigned"] });
+    },
+  });
+}

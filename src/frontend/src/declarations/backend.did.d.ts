@@ -222,6 +222,8 @@ export interface _SERVICE {
   'getSitterProfile' : ActorMethod<[Id], Public>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isAdminAssigned' : ActorMethod<[], boolean>,
+  'claimFirstAdmin' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'postServiceLog' : ActorMethod<[Creation], Public__1>,

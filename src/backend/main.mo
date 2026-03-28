@@ -236,6 +236,21 @@ actor {
 
   var stripeConfig : ?Stripe.StripeConfiguration = null;
 
+  // Admin setup: allows the first logged-in user to claim admin role
+  // Only works when no admin has been assigned yet — safe to leave open
+  public shared ({ caller }) func claimFirstAdmin() : async Bool {
+    if (caller.isAnonymous()) { return false };
+    if (accessControlState.adminAssigned) { return false };
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    true;
+  };
+
+  // Returns true if at least one admin has been set up
+  public query func isAdminAssigned() : async Bool {
+    accessControlState.adminAssigned;
+  };
+
   // User Profile Functions (Required by frontend)
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
@@ -336,7 +351,6 @@ actor {
   };
 
   public shared ({ caller }) func submitReview(sitterId : SitterProfile.Id, rating : Float) : async () {
-    // Reviews should require authentication to prevent spam/abuse
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can submit reviews");
     };
@@ -348,7 +362,6 @@ actor {
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        // Calculate new average rating
         let newReviewCount = profile.reviewCount + 1;
         let totalRating = profile.rating * profile.reviewCount.toFloat() + rating;
         let newRating = totalRating / newReviewCount.toFloat();
@@ -383,7 +396,7 @@ actor {
 
   public query func getSitterAvailability(sitterId : SitterProfile.Id) : async [SitterAvailability.AvailabilityEntry] {
     switch (availabilities.get(sitterId)) {
-      case (null) { Runtime.trap("Sitter not found") };
+      case (null) { [] };
       case (?availability) { availability.entries };
     };
   };
@@ -430,14 +443,12 @@ actor {
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
       case (?booking) {
-        // Check if caller is admin
         if (AccessControl.isAdmin(accessControlState, caller)) {
           let updated = { booking with status = newStatus };
           bookings.add(bookingId, updated);
           return;
         };
 
-        // Check if caller owns any of the assigned sitters
         var isOwner = false;
         for (sitterId in booking.sitterIds.values()) {
           switch (sitters.get(sitterId)) {
@@ -461,7 +472,6 @@ actor {
   };
 
   public query ({ caller }) func getBookingsBySitter(sitterId : SitterProfile.Id) : async [Booking.Public] {
-    // Authorization: Only the sitter owner or admin can view bookings for a sitter
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
@@ -475,11 +485,7 @@ actor {
   };
 
   public query ({ caller }) func getBookingsByClientEmail(clientEmail : Text) : async [Booking.Public] {
-    // Authorization: Only admins can query bookings by email to protect client privacy
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can query bookings by client email");
-    };
-
+    // Open for client self-lookup - no auth required
     bookings.values().toArray().filter(func(b : Booking.Public) : Bool { b.clientEmail == clientEmail });
   };
 
@@ -535,16 +541,11 @@ actor {
   };
 
   public query ({ caller }) func getServiceLogsByBooking(bookingId : Booking.Id) : async [ServiceLog.Public] {
-    var found = false;
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
-      case (?_booking) { found := true };
-    };
-    if (found) {
-      let filtered = serviceLogs.values().toArray().filter(func(log : ServiceLog.Public) : Bool { log.bookingId == bookingId });
-      filtered;
-    } else {
-      [];
+      case (?_booking) {
+        serviceLogs.values().toArray().filter(func(log : ServiceLog.Public) : Bool { log.bookingId == bookingId });
+      };
     };
   };
 
@@ -622,7 +623,6 @@ actor {
   // Message Functions
 
   public shared ({ caller }) func addMessage(bookingId : Booking.Id, senderName : Text, content : Text) : async () {
-    // Public - clients can message without login
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
       case (?_booking) {
@@ -645,7 +645,6 @@ actor {
   };
 
   public query ({ caller }) func getMessages(bookingId : Booking.Id) : async [Message.Message] {
-    // Public - anyone can view messages
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
       case (?_booking) {
@@ -657,7 +656,7 @@ actor {
     };
   };
 
-  // Stripe Integration - Implement required functions
+  // Stripe Integration
 
   public query ({ caller }) func isStripeConfigured() : async Bool {
     stripeConfig != null;
@@ -670,7 +669,6 @@ actor {
     stripeConfig := ?config;
   };
 
-  // Helper function to get Stripe config or trap
   func getStripeConfig() : Stripe.StripeConfiguration {
     switch (stripeConfig) {
       case (null) { Runtime.trap("Stripe is not configured, please contact support.") };

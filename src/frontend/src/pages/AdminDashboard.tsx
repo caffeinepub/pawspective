@@ -58,11 +58,13 @@ import {
   useAllPayments,
   useAllSitters,
   useAssignRole,
+  useClaimFirstAdmin,
   useConfirmManualPayment,
   useCreatePayment,
   useCreateSitter,
   useDeleteSitter,
   useIsAdmin,
+  useIsAdminAssigned,
   useSetSitterAvailability,
   useSitterAvailability,
   useUpdateBookingStatus,
@@ -717,6 +719,8 @@ function CreatePaymentDialog({
 export default function AdminDashboard({ navigate }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { data: adminAssigned } = useIsAdminAssigned();
+  const claimAdmin = useClaimFirstAdmin();
   const { data: sitters = [], isLoading: sittersLoading } = useAllSitters();
   const { data: bookings = [], isLoading: bookingsLoading } = useAllBookings();
   const { data: payments = [] } = useAllPayments();
@@ -779,11 +783,44 @@ export default function AdminDashboard({ navigate }: Props) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <ShieldCheck size={40} className="text-muted-foreground" />
-        <h2 className="font-display text-xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground text-center">
-          You don’t have admin privileges. Contact an existing admin to be
-          granted access.
+        <h2 className="font-display text-xl font-bold">
+          {adminAssigned === false ? "Set Up Admin Access" : "Access Denied"}
+        </h2>
+        <p className="text-muted-foreground text-center max-w-sm">
+          {adminAssigned === false
+            ? "No admin has been set up yet. Since you're logged in, you can claim admin access now."
+            : "You don't have admin privileges. Contact an existing admin to be granted access."}
         </p>
+        {adminAssigned === false && (
+          <Button
+            onClick={() =>
+              claimAdmin.mutate(undefined, {
+                onSuccess: (claimed) => {
+                  if (claimed) {
+                    toast.success("Admin access claimed! Reloading...");
+                    setTimeout(() => window.location.reload(), 1000);
+                  } else {
+                    toast.error(
+                      "Admin has already been claimed by someone else.",
+                    );
+                  }
+                },
+                onError: () => toast.error("Failed to claim admin access."),
+              })
+            }
+            disabled={claimAdmin.isPending}
+            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold"
+          >
+            {claimAdmin.isPending ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Claiming...
+              </>
+            ) : (
+              "Claim Admin Access"
+            )}
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={() => navigate("home")}
