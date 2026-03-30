@@ -15,9 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
-  Fingerprint,
   Loader2,
   PawPrint,
+  Receipt,
   Save,
   User,
 } from "lucide-react";
@@ -27,6 +27,7 @@ import type { View } from "../App";
 import type { AvailabilityEntry, Public, Public__3 } from "../backend.d";
 import BookingCard from "../components/BookingCard";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
+import SitterInvoicesTab from "../components/SitterInvoicesTab";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAllSitters,
@@ -122,7 +123,7 @@ function AvailabilityEditor({ sitterId }: { sitterId: bigint }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Set your weekly availability. Clients will see when you’re available.
+        Set your weekly availability. Clients will see when you're available.
       </p>
       <div className="space-y-2">
         {DAYS.map((day, idx) => (
@@ -371,9 +372,13 @@ export default function SitterDashboard({ navigate }: Props) {
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Tabs defaultValue="bookings">
-          <TabsList className="rounded-full mb-6">
+          <TabsList className="rounded-full mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="bookings" className="rounded-full">
               Bookings
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="rounded-full gap-1.5">
+              <Receipt size={13} />
+              Invoices
             </TabsTrigger>
             <TabsTrigger value="profile" className="rounded-full">
               Profile
@@ -382,6 +387,114 @@ export default function SitterDashboard({ navigate }: Props) {
               Availability
             </TabsTrigger>
           </TabsList>
+
+          {/* Bookings tab */}
+          <TabsContent value="bookings">
+            <div className="bg-card rounded-2xl border border-border shadow-xs p-6">
+              <h2 className="font-display text-xl font-bold mb-5">
+                Your Bookings
+              </h2>
+              {bookingsLoading ? (
+                <div>
+                  {["bk-1", "bk-2"].map((k) => (
+                    <Skeleton key={k} className="h-16 w-full rounded-xl mb-3" />
+                  ))}
+                </div>
+              ) : (
+                <Tabs defaultValue="confirmed">
+                  <TabsList className="rounded-full mb-4 w-full sm:w-auto overflow-x-auto">
+                    {(
+                      [
+                        "pending",
+                        "confirmed",
+                        "completed",
+                        "cancelled",
+                      ] as const
+                    ).map((tab) => (
+                      <TabsTrigger
+                        key={tab}
+                        value={tab}
+                        className="rounded-full capitalize text-xs"
+                      >
+                        {tab} ({groupedBookings[tab].length})
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  {(
+                    ["pending", "confirmed", "completed", "cancelled"] as const
+                  ).map((tab) => (
+                    <TabsContent key={tab} value={tab}>
+                      {groupedBookings[tab].length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="text-3xl mb-2">💭</div>
+                          <p className="text-muted-foreground">
+                            No {tab} bookings
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {groupedBookings[tab].map((b, i) => (
+                            <BookingCard
+                              key={b.id.toString()}
+                              booking={b}
+                              senderName={mySitter?.name ?? "Sitter"}
+                              index={i}
+                              onConfirm={
+                                tab === "pending"
+                                  ? (id) => handleStatus(id, "confirmed")
+                                  : undefined
+                              }
+                              onComplete={
+                                tab === "confirmed"
+                                  ? (id) => handleStatus(id, "completed")
+                                  : undefined
+                              }
+                              onCancel={(id) => handleStatus(id, "cancelled")}
+                              allSitters={allSitters as Public[]}
+                              extraContent={
+                                mySitter &&
+                                (tab === "confirmed" || tab === "completed") ? (
+                                  <ServiceLogTimeline
+                                    bookingId={b.id}
+                                    sitterId={mySitter.id}
+                                    sitterName={mySitter.name}
+                                    isActive={tab === "confirmed"}
+                                  />
+                                ) : undefined
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Invoices tab */}
+          <TabsContent value="invoices">
+            <div className="bg-card rounded-2xl border border-border shadow-xs p-6">
+              <h2 className="font-display text-xl font-bold mb-5">
+                Invoices &amp; Payments
+              </h2>
+              {mySitter ? (
+                <SitterInvoicesTab
+                  bookings={bookings as Public__3[]}
+                  allSitters={allSitters as Public[]}
+                  sitterName={mySitter.name}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-3xl mb-2">🧾</div>
+                  <p className="text-muted-foreground text-sm">
+                    Create your sitter profile to start managing invoices.
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
           {/* Profile tab */}
           <TabsContent value="profile">
@@ -509,90 +622,6 @@ export default function SitterDashboard({ navigate }: Props) {
                 <p className="text-muted-foreground text-sm">
                   Create your sitter profile first to set availability.
                 </p>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Bookings tab */}
-          <TabsContent value="bookings">
-            <div className="bg-card rounded-2xl border border-border shadow-xs p-6">
-              <h2 className="font-display text-xl font-bold mb-5">
-                Your Bookings
-              </h2>
-              {bookingsLoading ? (
-                <div>
-                  {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-xl mb-3" />
-                  ))}
-                </div>
-              ) : (
-                <Tabs defaultValue="confirmed">
-                  <TabsList className="rounded-full mb-4 w-full sm:w-auto overflow-x-auto">
-                    {(
-                      [
-                        "pending",
-                        "confirmed",
-                        "completed",
-                        "cancelled",
-                      ] as const
-                    ).map((tab) => (
-                      <TabsTrigger
-                        key={tab}
-                        value={tab}
-                        className="rounded-full capitalize text-xs"
-                      >
-                        {tab} ({groupedBookings[tab].length})
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  {(
-                    ["pending", "confirmed", "completed", "cancelled"] as const
-                  ).map((tab) => (
-                    <TabsContent key={tab} value={tab}>
-                      {groupedBookings[tab].length === 0 ? (
-                        <div className="text-center py-12">
-                          <div className="text-3xl mb-2">💭</div>
-                          <p className="text-muted-foreground">
-                            No {tab} bookings
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {groupedBookings[tab].map((b, i) => (
-                            <BookingCard
-                              key={b.id.toString()}
-                              booking={b}
-                              senderName={mySitter?.name ?? "Sitter"}
-                              index={i}
-                              onConfirm={
-                                tab === "pending"
-                                  ? (id) => handleStatus(id, "confirmed")
-                                  : undefined
-                              }
-                              onComplete={
-                                tab === "confirmed"
-                                  ? (id) => handleStatus(id, "completed")
-                                  : undefined
-                              }
-                              onCancel={(id) => handleStatus(id, "cancelled")}
-                              extraContent={
-                                mySitter &&
-                                (tab === "confirmed" || tab === "completed") ? (
-                                  <ServiceLogTimeline
-                                    bookingId={b.id}
-                                    sitterId={mySitter.id}
-                                    sitterName={mySitter.name}
-                                    isActive={tab === "confirmed"}
-                                  />
-                                ) : undefined
-                              }
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
-                  ))}
-                </Tabs>
               )}
             </div>
           </TabsContent>

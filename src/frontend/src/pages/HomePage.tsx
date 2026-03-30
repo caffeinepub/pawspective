@@ -121,11 +121,9 @@ export default function HomePage({ navigate }: Props) {
               Trusted by pet families everywhere
             </div>
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-[1.05] mb-6">
-              Your pet deserves
+              Pet Care
               <br />
-              <span style={{ color: "oklch(0.82 0.18 55)" }}>
-                the best care
-              </span>
+              <span style={{ color: "oklch(0.82 0.18 55)" }}>made easy</span>
             </h1>
             <p className="text-white/70 text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
               Connect with verified, passionate pet sitters in your
@@ -226,9 +224,9 @@ export default function HomePage({ navigate }: Props) {
 
           {isLoading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
+              {["s1", "s2", "s3"].map((k) => (
                 <div
-                  key={i}
+                  key={k}
                   className="rounded-2xl border border-border overflow-hidden"
                 >
                   <Skeleton className="h-44 w-full" />
