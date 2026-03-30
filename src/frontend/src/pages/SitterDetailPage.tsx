@@ -688,7 +688,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
               {/* Existing pets */}
               {pets.map((pet, idx) => (
                 <div
-                  key={`pet-${idx}`}
+                  key={pet.petName + pet.petType}
                   className="border border-border rounded-xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">

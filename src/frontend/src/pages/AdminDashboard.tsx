@@ -32,6 +32,7 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  Fingerprint,
   Loader2,
   PawPrint,
   Plus,
@@ -743,27 +744,33 @@ export default function AdminDashboard({ navigate }: Props) {
         </div>
         <h2 className="font-display text-2xl font-bold">Admin Dashboard</h2>
         <p className="text-muted-foreground text-center">
-          Authentication required to access the admin panel.
+          Sign in securely with your fingerprint or face — no password needed.
         </p>
         <Button
           data-ocid="admin.login.button"
           onClick={login}
           disabled={isLoggingIn}
-          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold"
+          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold gap-2 shadow-lg shadow-primary/20"
         >
           {isLoggingIn ? (
             <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Connecting...
+              <Loader2 size={16} className="animate-spin" />
+              Verifying your identity...
             </>
           ) : (
-            "Log In with Internet Identity"
+            <>
+              <Fingerprint size={16} />
+              Sign In Securely →
+            </>
           )}
         </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          3-second sign-in · No password · Phishing-proof
+        </p>
         <Button
           variant="ghost"
           onClick={() => navigate("home")}
-          className="text-muted-foreground"
+          className="text-muted-foreground text-sm"
         >
           <ArrowLeft size={14} className="mr-1" /> Back to Home
         </Button>

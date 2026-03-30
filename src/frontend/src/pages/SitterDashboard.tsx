@@ -13,7 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, PawPrint, Save, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Fingerprint,
+  Loader2,
+  PawPrint,
+  Save,
+  User,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
