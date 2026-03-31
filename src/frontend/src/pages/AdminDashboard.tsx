@@ -496,6 +496,17 @@ function AdminAvailabilityTab({ sitters }: { sitters: Public[] }) {
         </Select>
       </div>
 
+      {sitters.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
+          <CalendarDays size={32} className="opacity-30" />
+          <p className="text-sm font-medium">No sitters yet</p>
+          <p className="text-xs">
+            Add a sitter in the Sitters tab first, then manage their
+            availability here.
+          </p>
+        </div>
+      )}
+
       {selectedSitterId && (
         <div className="space-y-3">
           {DAYS.map((day, idx) => (
