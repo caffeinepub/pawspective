@@ -9,12 +9,12 @@ import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
+
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
 // Apply migration with `with` clause
-(with migration = Migration.run)
+
 actor {
   module SitterProfile {
     public type Id = Nat;
