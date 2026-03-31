@@ -246,6 +246,7 @@ actor {
     true;
   };
 
+
   // Returns true if at least one admin has been set up
   public query func isAdminAssigned() : async Bool {
     accessControlState.adminAssigned;
@@ -281,12 +282,15 @@ actor {
       Runtime.trap("Unauthorized: Only authenticated users can create sitter profiles");
     };
 
+    // Admins create active sitters directly; self-registered sitters are pending approval
+    let isAdmin = AccessControl.isAdmin(accessControlState, caller);
+
     let newProfile : SitterProfile.Public = {
       input with
       id = nextSitterId;
       rating = 0.0;
       reviewCount = 0;
-      isActive = true;
+      isActive = isAdmin;
       owner = ?caller;
     };
 

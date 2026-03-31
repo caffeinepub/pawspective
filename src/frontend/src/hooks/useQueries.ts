@@ -395,6 +395,30 @@ export function useDeleteSitter() {
   });
 }
 
+export function useApproveSitter() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sitter: SitterUpdate) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateSitterProfile({
+        id: sitter.id,
+        name: sitter.name,
+        bio: sitter.bio,
+        services: sitter.services,
+        hourlyRate: sitter.hourlyRate,
+        location: sitter.location,
+        photoUrl: sitter.photoUrl,
+        isActive: true,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-sitters"] });
+      qc.invalidateQueries({ queryKey: ["active-sitters"] });
+    },
+  });
+}
+
 export function useConfirmManualPayment() {
   const { actor } = useActor();
   const qc = useQueryClient();

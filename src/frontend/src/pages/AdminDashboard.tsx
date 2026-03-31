@@ -32,13 +32,19 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  CalendarDays,
+  Clock,
+  DollarSign,
+  FileText,
   Fingerprint,
   Loader2,
   PawPrint,
   Plus,
   ShieldCheck,
   Trash2,
+  UserCheck,
   UserPlus,
+  Users,
   Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -58,6 +64,7 @@ import {
   useAllBookings,
   useAllPayments,
   useAllSitters,
+  useApproveSitter,
   useAssignRole,
   useClaimFirstAdmin,
   useConfirmManualPayment,
@@ -284,33 +291,41 @@ function AnalyticsTab({
           {
             label: "Total Revenue",
             value: `$${totalRevenue.toLocaleString()}`,
-            icon: "💰",
+            Icon: DollarSign,
             color: "text-emerald-600",
+            bg: "bg-emerald-50",
           },
           {
             label: "Pending Revenue",
             value: `$${pendingRevenue.toLocaleString()}`,
-            icon: "⏳",
+            Icon: Clock,
             color: "text-amber-600",
+            bg: "bg-amber-50",
           },
           {
             label: "Total Bookings",
             value: bookings.length,
-            icon: "📝",
+            Icon: FileText,
             color: "text-blue-600",
+            bg: "bg-blue-50",
           },
           {
             label: "Active Sitters",
             value: sitters.filter((s) => s.isActive).length,
-            icon: "👥",
+            Icon: Users,
             color: "text-primary",
+            bg: "bg-primary/10",
           },
-        ].map(({ label, value, icon, color }) => (
+        ].map(({ label, value, Icon, color, bg }) => (
           <div
             key={label}
             className="bg-card rounded-xl border border-border p-4"
           >
-            <div className="text-2xl mb-1">{icon}</div>
+            <div
+              className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center mb-2`}
+            >
+              <Icon size={18} className={color} />
+            </div>
             <p className={`font-display font-bold text-2xl ${color}`}>
               {value}
             </p>
@@ -727,6 +742,7 @@ export default function AdminDashboard({ navigate }: Props) {
   const { data: payments = [] } = useAllPayments();
   const updateStatus = useUpdateBookingStatus();
   const deleteSitter = useDeleteSitter();
+  const approveSitter = useApproveSitter();
   const assignRole = useAssignRole();
   const confirmPayment = useConfirmManualPayment();
   const updateSplits = useUpdatePaymentSplits();
@@ -878,6 +894,17 @@ export default function AdminDashboard({ navigate }: Props) {
               <BarChart3 size={13} /> Analytics
             </TabsTrigger>
             <TabsTrigger
+              value="applications"
+              className="rounded-full gap-1.5 text-xs sm:text-sm"
+            >
+              <UserCheck size={13} /> Applications
+              {allSitters.filter((s) => !s.isActive).length > 0 && (
+                <span className="ml-1 bg-amber-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                  {allSitters.filter((s) => !s.isActive).length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
               value="bookings"
               className="rounded-full gap-1.5 text-xs sm:text-sm"
             >
@@ -899,7 +926,7 @@ export default function AdminDashboard({ navigate }: Props) {
               value="availability"
               className="rounded-full gap-1.5 text-xs sm:text-sm"
             >
-              📅 Availability
+              <CalendarDays size={13} /> Availability
             </TabsTrigger>
             <TabsTrigger
               value="access"
@@ -916,6 +943,117 @@ export default function AdminDashboard({ navigate }: Props) {
               sitters={allSitters}
               payments={allPayments}
             />
+          </TabsContent>
+
+          {/* Applications */}
+          <TabsContent value="applications">
+            <div className="bg-card rounded-2xl border border-border shadow-xs p-6">
+              <h2 className="font-display text-xl font-bold mb-5">
+                Sitter Applications
+              </h2>
+              {allSitters.filter((s) => !s.isActive).length === 0 ? (
+                <div
+                  data-ocid="admin.applications.empty_state"
+                  className="text-center py-16"
+                >
+                  <UserCheck
+                    size={40}
+                    className="mx-auto text-muted-foreground mb-3"
+                  />
+                  <p className="text-muted-foreground font-medium">
+                    No pending applications
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    New sitter applications will appear here for review.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {allSitters
+                    .filter((s) => !s.isActive)
+                    .map((s, i) => (
+                      <div
+                        key={s.id.toString()}
+                        data-ocid={`admin.applications.item.${i + 1}`}
+                        className="border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-start gap-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-base">
+                              {s.name}
+                            </h3>
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                              Pending
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {s.location}
+                          </p>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                            {s.bio}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {s.services.slice(0, 4).map((svc) => (
+                              <span
+                                key={svc}
+                                className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                              >
+                                {svc}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            data-ocid={`admin.applications.confirm_button.${i + 1}`}
+                            className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                            disabled={approveSitter.isPending}
+                            onClick={() =>
+                              approveSitter.mutate(
+                                {
+                                  id: s.id,
+                                  name: s.name,
+                                  bio: s.bio,
+                                  services: s.services,
+                                  hourlyRate: s.hourlyRate,
+                                  location: s.location,
+                                  photoUrl: s.photoUrl,
+                                  isActive: true,
+                                },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(`${s.name} approved!`),
+                                  onError: () =>
+                                    toast.error("Failed to approve"),
+                                },
+                              )
+                            }
+                          >
+                            <UserCheck size={13} /> Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            data-ocid={`admin.applications.delete_button.${i + 1}`}
+                            className="rounded-full text-destructive hover:bg-destructive/10 gap-1"
+                            disabled={deleteSitter.isPending}
+                            onClick={() =>
+                              deleteSitter.mutate(s.id, {
+                                onSuccess: () =>
+                                  toast.success(`${s.name} declined`),
+                                onError: () => toast.error("Failed to decline"),
+                              })
+                            }
+                          >
+                            <Trash2 size={13} /> Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* Sitters */}
@@ -991,11 +1129,15 @@ export default function AdminDashboard({ navigate }: Props) {
                             {s.rating > 0 ? `${s.rating.toFixed(1)} ⭐` : "New"}
                           </TableCell>
                           <TableCell>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.isActive ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}
-                            >
-                              {s.isActive ? "Active" : "Inactive"}
-                            </span>
+                            {s.isActive ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">
+                                Pending
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Button

@@ -519,6 +519,16 @@ export default function LoginPage({ navigate }: Props) {
                             : "Open My Dashboard"}
                           <ArrowRight size={16} />
                         </Button>
+                        {!isAdmin && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => navigate("admin-dashboard")}
+                            className="w-full rounded-2xl text-muted-foreground text-sm gap-1"
+                            data-ocid="login.admin_panel.button"
+                          >
+                            <ShieldCheck size={14} /> Go to Admin Panel
+                          </Button>
+                        )}
                         <Button
                           data-ocid="login.logout.button"
                           onClick={clear}

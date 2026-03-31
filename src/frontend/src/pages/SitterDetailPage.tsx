@@ -1,12 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -22,7 +16,6 @@ import { format } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarIcon,
   Check,
   Loader2,
   MapPin,
@@ -34,6 +27,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
@@ -96,43 +90,37 @@ function DatePicker({
   disabled?: (date: Date) => boolean;
   ocid?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const selected = value ? new Date(`${value}T12:00:00`) : undefined;
+  const today = new Date().toISOString().split("T")[0];
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          data-ocid={ocid}
-          variant="outline"
-          type="button"
-          className={cn(
-            "w-full justify-start text-left font-normal rounded-lg h-11",
-            !value && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-          {selected ? format(selected, "MMMM d, yyyy") : placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(date) => {
-            if (date) {
-              onChange(date.toISOString().split("T")[0]);
-              setOpen(false);
-            }
-          }}
-          disabled={disabled}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
+    <div className="relative w-full">
+      <input
+        data-ocid={ocid}
+        type="date"
+        value={value}
+        min={today}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val && disabled) {
+            const d = new Date(`${val}T12:00:00`);
+            if (disabled(d)) return;
+          }
+          onChange(val);
+        }}
+        className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        style={{ fontSize: "16px", minHeight: "52px" }}
+        placeholder={placeholder}
+      />
+      {!value && (
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
+          {placeholder}
+        </span>
+      )}
+    </div>
   );
 }
 
 interface PetFormState {
+  _id: number;
   petName: string;
   petType: string;
   breed: string;
@@ -157,16 +145,20 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   ]);
   // Step 3: Dates
   const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("17:00");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrencePattern, setRecurrencePattern] = useState<string>("weekly");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
   // Step 4: Pets
   const [pets, setPets] = useState<PetFormState[]>([
-    { petName: "", petType: "", breed: "", petNotes: "" },
+    { _id: 0, petName: "", petType: "", breed: "", petNotes: "" },
   ]);
+  const petIdCounter = React.useRef(1);
   const [addingPet, setAddingPet] = useState(false);
   const [newPet, setNewPet] = useState<PetFormState>({
+    _id: -1,
     petName: "",
     petType: "",
     breed: "",
@@ -215,8 +207,9 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
 
   const addNewPet = () => {
     if (!newPet.petName || !newPet.petType) return;
-    setPets((prev) => [...prev, newPet]);
-    setNewPet({ petName: "", petType: "", breed: "", petNotes: "" });
+    const id = petIdCounter.current++;
+    setPets((prev) => [...prev, { ...newPet, _id: id }]);
+    setNewPet({ _id: -1, petName: "", petType: "", breed: "", petNotes: "" });
     setAddingPet(false);
   };
 
@@ -229,8 +222,10 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const handleSubmit = async () => {
     if (!sitter) return;
     try {
-      const startNs = BigInt(new Date(startDate).getTime()) * 1_000_000n;
-      const endNs = BigInt(new Date(endDate).getTime()) * 1_000_000n;
+      const startNs =
+        BigInt(new Date(`${startDate}T${startTime}`).getTime()) * 1_000_000n;
+      const endNs =
+        BigInt(new Date(`${endDate}T${endTime}`).getTime()) * 1_000_000n;
       const recEndNs = recurrenceEndDate
         ? BigInt(new Date(recurrenceEndDate).getTime()) * 1_000_000n
         : undefined;
@@ -587,7 +582,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>Drop-off Date</Label>
                   <DatePicker
                     value={startDate}
                     onChange={(iso) => {
@@ -598,9 +593,21 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                     disabled={(d) => d < today}
                     ocid="booking.start_date.button"
                   />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      Drop-off Time
+                    </Label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      style={{ fontSize: "16px", minHeight: "52px" }}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>End Date</Label>
+                  <Label>Pick-up Date</Label>
                   <DatePicker
                     value={endDate}
                     onChange={setEndDate}
@@ -613,6 +620,18 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                     }}
                     ocid="booking.end_date.button"
                   />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      Pick-up Time
+                    </Label>
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      style={{ fontSize: "16px", minHeight: "52px" }}
+                    />
+                  </div>
                 </div>
               </div>
               {startDate && endDate && (
@@ -688,7 +707,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
               {/* Existing pets */}
               {pets.map((pet, idx) => (
                 <div
-                  key={pet.petName + pet.petType}
+                  key={pet._id}
                   className="border border-border rounded-xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
@@ -935,8 +954,8 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   ],
                   ["Services", selectedServices.join(", ")],
                   [
-                    "Dates",
-                    `${startDate ? format(new Date(`${startDate}T12:00:00`), "MMM d, yyyy") : ""} → ${endDate ? format(new Date(`${endDate}T12:00:00`), "MMM d, yyyy") : ""}`,
+                    "Dates & Times",
+                    `${startDate ? format(new Date(`${startDate}T${startTime}`), "MMM d, yyyy h:mm a") : ""} → ${endDate ? format(new Date(`${endDate}T${endTime}`), "MMM d, yyyy h:mm a") : ""}`,
                   ],
                   [
                     "Recurring",

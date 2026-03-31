@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
+  Clock,
   Loader2,
   PawPrint,
   Receipt,
@@ -371,6 +372,21 @@ export default function SitterDashboard({ navigate }: Props) {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {mySitter && !mySitter.isActive && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
+            <Clock size={18} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-800 text-sm">
+                Application Pending Review
+              </p>
+              <p className="text-amber-700 text-sm mt-0.5">
+                Your application is pending admin review. You&apos;ll be
+                notified once approved and your profile will become visible to
+                clients.
+              </p>
+            </div>
+          </div>
+        )}
         <Tabs defaultValue="bookings">
           <TabsList className="rounded-full mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="bookings" className="rounded-full">
