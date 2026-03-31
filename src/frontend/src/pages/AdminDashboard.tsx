@@ -54,8 +54,8 @@ import type {
   AvailabilityEntry,
   PaymentMethod,
   Public,
-  Public__2,
   Public__3,
+  Public__4,
 } from "../backend.d";
 import { PaymentStatus } from "../backend.d";
 import StatusBadge from "../components/StatusBadge";
@@ -245,7 +245,11 @@ function AnalyticsTab({
   bookings,
   sitters,
   payments,
-}: { bookings: Public__3[]; sitters: Public[]; payments: Public__2[] }) {
+}: {
+  bookings: Public__4[];
+  sitters: Public[];
+  payments: Public__3[];
+}) {
   const totalRevenue = payments
     .filter((p) => p.status === PaymentStatus.paid)
     .reduce((sum, p) => sum + Number(p.totalAmount), 0);
@@ -568,7 +572,11 @@ function CreatePaymentDialog({
   bookings,
   sitters,
   onClose,
-}: { bookings: Public__3[]; sitters: Public[]; onClose: () => void }) {
+}: {
+  bookings: Public__4[];
+  sitters: Public[];
+  onClose: () => void;
+}) {
   const createPayment = useCreatePayment();
   const [bookingId, setBookingId] = useState("");
   const [amount, setAmount] = useState("");
@@ -807,14 +815,14 @@ export default function AdminDashboard({ navigate }: Props) {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <ShieldCheck size={40} className="text-muted-foreground" />
         <h2 className="font-display text-xl font-bold">
-          {adminAssigned === false ? "Set Up Admin Access" : "Access Denied"}
+          {"Set Up Admin Access"}
         </h2>
         <p className="text-muted-foreground text-center max-w-sm">
-          {adminAssigned === false
+          {adminAssigned !== true
             ? "No admin has been set up yet. Since you're logged in, you can claim admin access now."
             : "You don't have admin privileges. Contact an existing admin to be granted access."}
         </p>
-        {adminAssigned === false && (
+        {adminAssigned !== true && (
           <Button
             onClick={() =>
               claimAdmin.mutate(undefined, {
@@ -859,9 +867,9 @@ export default function AdminDashboard({ navigate }: Props) {
     s.name.toLowerCase().includes(searchSitter.toLowerCase()),
   );
 
-  const allBookings = bookings as Public__3[];
+  const allBookings = bookings as Public__4[];
   const allSitters = sitters as Public[];
-  const allPayments = payments as Public__2[];
+  const allPayments = payments as Public__3[];
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">

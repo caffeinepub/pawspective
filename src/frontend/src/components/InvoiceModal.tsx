@@ -18,7 +18,12 @@ import {
 import { CheckCircle2, Loader2, PawPrint, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Public, Public__3 } from "../backend.d";
+import type {
+  DayServiceSchedule,
+  Public,
+  Public__4,
+  ServiceSlot,
+} from "../backend.d";
 import { PaymentMethod, PaymentStatus } from "../backend.d";
 import {
   useConfirmManualPayment,
@@ -51,7 +56,7 @@ function getDays(start: bigint, end: bigint): number {
   return Math.max(1, Math.ceil(ms / 86_400_000));
 }
 
-function calcSuggestedTotal(booking: Public__3, allSitters: Public[]): number {
+function calcSuggestedTotal(booking: Public__4, allSitters: Public[]): number {
   const days = getDays(booking.startDate, booking.endDate);
   const ids = booking.sitterIds ?? [];
   if (ids.length >= 2) {
@@ -63,6 +68,20 @@ function calcSuggestedTotal(booking: Public__3, allSitters: Public[]): number {
   }
   const s = allSitters.find((s) => ids.length > 0 && s.id === ids[0]);
   return (s ? Number(s.hourlyRate) : 0) * days;
+}
+
+function calcScheduleTotal(schedule: DayServiceSchedule[]): {
+  subtotal: number;
+  discount: number;
+  total: number;
+} {
+  const allSlots: ServiceSlot[] = schedule.flatMap((d) => d.slots);
+  const subtotal = allSlots.reduce((sum, slot) => {
+    const hours = Number(slot.durationMinutes) / 60;
+    return sum + hours * Number(slot.ratePerHour);
+  }, 0);
+  const discount = allSlots.length >= 3 ? subtotal * 0.1 : 0;
+  return { subtotal, discount, total: subtotal - discount };
 }
 
 function InvoiceRow({ label, value }: { label: string; value: string }) {
@@ -79,7 +98,7 @@ function InvoiceRow({ label, value }: { label: string; value: string }) {
 }
 
 interface Props {
-  booking: Public__3;
+  booking: Public__4;
   sitterName: string;
   allSitters: Public[];
   open: boolean;
@@ -111,9 +130,16 @@ export default function InvoiceModal({
       const noteMethod = payment.notes ?? "";
       if (PAYMENT_METHODS.includes(noteMethod)) setPayMethod(noteMethod);
     } else if (open) {
-      setAmountStr(suggestedTotal.toFixed(2));
+      const schedule = (booking as any).serviceSchedule as
+        | DayServiceSchedule[]
+        | undefined;
+      if (schedule && schedule.length > 0) {
+        setAmountStr(calcScheduleTotal(schedule).total.toFixed(2));
+      } else {
+        setAmountStr(suggestedTotal.toFixed(2));
+      }
     }
-  }, [payment, open, suggestedTotal]);
+  }, [payment, open, suggestedTotal, booking]);
 
   const displayAmount = amountStr ? Number.parseFloat(amountStr) || 0 : 0;
   const days = getDays(booking.startDate, booking.endDate);
@@ -256,42 +282,123 @@ export default function InvoiceModal({
               </div>
             </div>
 
-            {/* ── Service details table ── */}
+            {/* ── Service details ── */}
             <div className="px-8 py-5 border-b border-gray-100">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
                 Service Details
               </p>
-              <table className="w-full">
-                <tbody>
-                  <InvoiceRow
-                    label="Drop-off"
-                    value={formatDateTime(booking.startDate)}
-                  />
-                  <InvoiceRow
-                    label="Pick-up"
-                    value={formatDateTime(booking.endDate)}
-                  />
-                  <InvoiceRow
-                    label="Duration"
-                    value={`${days} day${days !== 1 ? "s" : ""}`}
-                  />
-                  <InvoiceRow label="Services" value={servicesList} />
-                  <InvoiceRow label="Pets" value={petsList} />
-                  {booking.notes ? (
-                    <InvoiceRow label="Notes" value={booking.notes} />
-                  ) : null}
-                  {twoSitters && (
-                    <tr>
-                      <td colSpan={2} className="pt-3 pb-1">
-                        <p className="text-xs text-indigo-500 italic">
-                          2-sitter rate: average of both sitters' daily rates +
-                          $10/day
+              {/* Line-item schedule if available */}
+              {(booking as any).serviceSchedule &&
+              (booking as any).serviceSchedule.length > 0 ? (
+                <div className="space-y-4">
+                  {(
+                    (booking as any).serviceSchedule as DayServiceSchedule[]
+                  ).map((day) => {
+                    const d = new Date(`${day.date}T12:00:00`);
+                    const dayLabel = d.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                    return (
+                      <div key={day.date}>
+                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">
+                          {dayLabel}
                         </p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        <table className="w-full">
+                          <tbody>
+                            {day.slots.map((slot, i) => {
+                              const hours = Number(slot.durationMinutes) / 60;
+                              const cost = hours * Number(slot.ratePerHour);
+                              const sitterObj = allSitters.find(
+                                (s) => s.id === slot.sitterId,
+                              );
+                              return (
+                                <tr
+                                  key={i}
+                                  className="border-b border-gray-50 last:border-0"
+                                >
+                                  <td className="py-2 pr-2 text-sm text-gray-800 font-medium align-top">
+                                    {slot.service}
+                                  </td>
+                                  <td className="py-2 pr-2 text-xs text-gray-500 align-top">
+                                    {sitterObj?.name ?? "Sitter"}
+                                  </td>
+                                  <td className="py-2 pr-2 text-xs text-gray-500 align-top whitespace-nowrap">
+                                    {slot.startTime}–{slot.endTime}
+                                  </td>
+                                  <td className="py-2 text-sm text-gray-800 font-semibold text-right align-top whitespace-nowrap">
+                                    ${cost.toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t border-gray-200 pt-3 space-y-1">
+                    {(() => {
+                      const { subtotal, discount } = calcScheduleTotal(
+                        (booking as any).serviceSchedule,
+                      );
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>Subtotal</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                          </div>
+                          {discount > 0 && (
+                            <div className="flex justify-between text-sm text-emerald-600">
+                              <span>Bundle discount (10%)</span>
+                              <span>-${discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {booking.notes ? (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Notes: {booking.notes}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <table className="w-full">
+                  <tbody>
+                    <InvoiceRow
+                      label="Drop-off"
+                      value={formatDateTime(booking.startDate)}
+                    />
+                    <InvoiceRow
+                      label="Pick-up"
+                      value={formatDateTime(booking.endDate)}
+                    />
+                    <InvoiceRow
+                      label="Duration"
+                      value={`${days} day${days !== 1 ? "s" : ""}`}
+                    />
+                    <InvoiceRow label="Services" value={servicesList} />
+                    <InvoiceRow label="Pets" value={petsList} />
+                    {booking.notes ? (
+                      <InvoiceRow label="Notes" value={booking.notes} />
+                    ) : null}
+                    {twoSitters && (
+                      <tr>
+                        <td colSpan={2} className="pt-3 pb-1">
+                          <p className="text-xs text-indigo-500 italic">
+                            2-sitter rate: average of both sitters&apos; daily
+                            rates + $10/day
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* ── Total + payment ── */}

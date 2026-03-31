@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Public__1 } from "../backend.d";
+import type { Public__2 } from "../backend.d";
 import { ServiceStatus } from "../backend.d";
 import {
   usePostServiceLog,
@@ -82,13 +82,13 @@ export default function ServiceLogTimeline({
   const [updateStatus, setUpdateStatus] = useState<string>("inProgress");
   const [updateNotes, setUpdateNotes] = useState("");
 
-  const activeLog = (logs as Public__1[]).find(
+  const activeLog = (logs as Public__2[]).find(
     (l) =>
       !l.stopTime &&
       (l.status === ServiceStatus.checkedIn ||
         l.status === ServiceStatus.inProgress),
   );
-  const hasCheckedIn = (logs as Public__1[]).some(
+  const hasCheckedIn = (logs as Public__2[]).some(
     (l) =>
       l.status === ServiceStatus.checkedIn ||
       l.status === ServiceStatus.inProgress ||
@@ -236,13 +236,13 @@ export default function ServiceLogTimeline({
         </div>
       )}
 
-      {(logs as Public__1[]).length === 0 ? (
+      {(logs as Public__2[]).length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-3">
           No activity logged yet.
         </p>
       ) : (
         <div className="space-y-2">
-          {[...(logs as Public__1[])].reverse().map((log) => {
+          {[...(logs as Public__2[])].reverse().map((log) => {
             const cfg =
               STATUS_CONFIG[log.status as string] ?? STATUS_CONFIG.inProgress;
             return (

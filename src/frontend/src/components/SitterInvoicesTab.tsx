@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle2, DollarSign, FileText, Printer, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Public, Public__2, Public__3 } from "../backend.d";
+import type { Public, Public__3, Public__4 } from "../backend.d";
 import { PaymentStatus } from "../backend.d";
 import { useAllPayments } from "../hooks/useQueries";
 import InvoiceModal from "./InvoiceModal";
@@ -35,7 +35,7 @@ function getDays(start: bigint, end: bigint): number {
   return Math.max(1, Math.ceil(ms / 86_400_000));
 }
 
-function calcSuggestedTotal(booking: Public__3, allSitters: Public[]): number {
+function calcSuggestedTotal(booking: Public__4, allSitters: Public[]): number {
   const days = getDays(booking.startDate, booking.endDate);
   const ids = booking.sitterIds ?? [];
   if (ids.length >= 2) {
@@ -50,7 +50,7 @@ function calcSuggestedTotal(booking: Public__3, allSitters: Public[]): number {
 }
 
 interface Props {
-  bookings: Public__3[];
+  bookings: Public__4[];
   allSitters: Public[];
   sitterName: string;
 }
@@ -67,13 +67,13 @@ export default function SitterInvoicesTab({
   );
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<Public__3 | null>(
+  const [selectedBooking, setSelectedBooking] = useState<Public__4 | null>(
     null,
   );
 
   const paymentMap = useMemo(() => {
-    const map = new Map<string, Public__2>();
-    for (const p of allPayments as Public__2[]) {
+    const map = new Map<string, Public__3>();
+    for (const p of allPayments as Public__3[]) {
       map.set(p.bookingId.toString(), p);
     }
     return map;

@@ -1,15 +1,16 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
+    "include": [
+      "src/**"
+    ],
     "ignore": [
-      "**/backend.ts",
-      "**/backend.d.ts",
-      "dist/**",
-      "node_modules/**",
-      "build/**",
-      "*.config.js",
+      "src/backend.ts",
+      "src/backend.d.ts",
       "src/declarations/**",
-      "src/config.ts"
+      "src/config.ts",
+      "src/components/ui/**",
+      "src/index.css"
     ]
   },
   "formatter": {
@@ -26,7 +27,8 @@
         "noUnusedVariables": "error"
       },
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off"
       },
       "style": {
         "useConst": "off",

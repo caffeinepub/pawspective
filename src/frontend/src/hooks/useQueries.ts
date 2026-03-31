@@ -3,6 +3,7 @@ import type {
   AvailabilityEntry,
   Creation,
   Creation__2,
+  DayServiceSchedule,
   Pet,
   RecurrencePattern,
   UpdateSplits,
@@ -28,6 +29,7 @@ export interface BookingCreation {
   recurrencePattern?: RecurrencePattern;
   recurrenceEndDate?: bigint;
   tip?: bigint;
+  serviceSchedule?: DayServiceSchedule[];
 }
 
 export function useActiveSitters() {
@@ -228,7 +230,10 @@ export function useSetSitterAvailability() {
     mutationFn: async ({
       sitterId,
       entries,
-    }: { sitterId: bigint; entries: AvailabilityEntry[] }) => {
+    }: {
+      sitterId: bigint;
+      entries: AvailabilityEntry[];
+    }) => {
       if (!actor) throw new Error("Actor not ready");
       return actor.setSitterAvailability(sitterId, entries);
     },
@@ -259,6 +264,7 @@ export function useCreateBooking() {
         recurrencePattern: input.recurrencePattern,
         recurrenceEndDate: input.recurrenceEndDate,
         tip: input.tip,
+        serviceSchedule: input.serviceSchedule,
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["all-bookings"] }),
@@ -440,7 +446,10 @@ export function useSubmitReview() {
     mutationFn: async ({
       sitterId,
       rating,
-    }: { sitterId: bigint; rating: number }) => {
+    }: {
+      sitterId: bigint;
+      rating: number;
+    }) => {
       if (!actor) throw new Error("Actor not ready");
       return actor.submitReview(sitterId, rating);
     },
@@ -454,7 +463,10 @@ export function useAssignRole() {
     mutationFn: async ({
       principal,
       role,
-    }: { principal: string; role: "admin" | "user" }) => {
+    }: {
+      principal: string;
+      role: "admin" | "user";
+    }) => {
       if (!actor) throw new Error("Actor not ready");
       const { Principal } = await import("@icp-sdk/core/principal");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -490,6 +502,42 @@ export function useClaimFirstAdmin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["is-admin"] });
       qc.invalidateQueries({ queryKey: ["is-admin-assigned"] });
+    },
+  });
+}
+
+export function useSitterServiceRates(sitterId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["sitter-service-rates", sitterId?.toString()],
+    queryFn: async () => {
+      if (!actor || sitterId === null) return [];
+      return actor.getSitterServiceRates(sitterId);
+    },
+    enabled: !!actor && !isFetching && sitterId !== null,
+  });
+}
+
+export function useSetSitterServiceRates() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      sitterId,
+      rates,
+    }: {
+      sitterId: bigint;
+      rates: Array<{ service: string; ratePerHour: bigint }>;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.setSitterServiceRates(sitterId, rates);
+    },
+    onSuccess: (_, { sitterId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["sitter-service-rates", sitterId.toString()],
+      });
+      queryClient.invalidateQueries({ queryKey: ["all-sitters"] });
+      queryClient.invalidateQueries({ queryKey: ["active-sitters"] });
     },
   });
 }

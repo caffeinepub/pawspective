@@ -27,11 +27,17 @@ import {
   Users,
   X,
 } from "lucide-react";
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
-import type { Pet, Public, Public__3, RecurrencePattern } from "../backend.d";
+import type {
+  DayServiceSchedule,
+  Pet,
+  Public,
+  Public__4,
+  RecurrencePattern,
+  ServiceSlot,
+} from "../backend.d";
 import StatusBadge from "../components/StatusBadge";
 import {
   useActiveSitters,
@@ -119,6 +125,302 @@ function DatePicker({
   );
 }
 
+function getDaysRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+}
+
+function getSlotCost(slot: ServiceSlot): number {
+  const hours = Number(slot.durationMinutes) / 60;
+  return hours * Number(slot.ratePerHour);
+}
+
+function calcDurationMinutes(startTime: string, endTime: string): number {
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  return Math.max(0, eh * 60 + em - (sh * 60 + (sm || 0)));
+}
+
+interface DaySchedulerProps {
+  startDate: string;
+  endDate: string;
+  selectedServices: string[];
+  selectedSitterIds: bigint[];
+  allSitters: Public[];
+  sitter: Public;
+  serviceSchedule: DayServiceSchedule[];
+  onScheduleChange: (schedule: DayServiceSchedule[]) => void;
+}
+
+function DayServiceScheduler({
+  startDate,
+  endDate,
+  selectedServices,
+  selectedSitterIds,
+  allSitters,
+  sitter,
+  serviceSchedule,
+  onScheduleChange,
+}: DaySchedulerProps) {
+  const days = getDaysRange(startDate, endDate);
+
+  const getOrCreateDay = (date: string): DayServiceSchedule => {
+    return serviceSchedule.find((d) => d.date === date) ?? { date, slots: [] };
+  };
+
+  const updateDay = (date: string, slots: ServiceSlot[]) => {
+    const existing = serviceSchedule.find((d) => d.date === date);
+    if (existing) {
+      onScheduleChange(
+        serviceSchedule.map((d) => (d.date === date ? { ...d, slots } : d)),
+      );
+    } else {
+      onScheduleChange([...serviceSchedule, { date, slots }]);
+    }
+  };
+
+  const addSlot = (date: string) => {
+    const day = getOrCreateDay(date);
+    const firstSitter =
+      allSitters.find((s) => selectedSitterIds.includes(s.id)) ?? sitter;
+    const firstService =
+      selectedServices[0] ?? sitter.services[0] ?? "Dog Walking";
+    const rateObj = firstSitter.serviceRates?.find(
+      (r) => r.service === firstService,
+    );
+    const ratePerHour = rateObj ? rateObj.ratePerHour : firstSitter.hourlyRate;
+    const newSlot: ServiceSlot = {
+      service: firstService,
+      sitterId: firstSitter.id,
+      startTime: "09:00",
+      endTime: "10:00",
+      durationMinutes: 60n,
+      ratePerHour,
+    };
+    updateDay(date, [...day.slots, newSlot]);
+  };
+
+  const updateSlot = (
+    date: string,
+    slotIdx: number,
+    updates: Partial<ServiceSlot>,
+  ) => {
+    const day = getOrCreateDay(date);
+    const updatedSlots = day.slots.map((s, i) => {
+      if (i !== slotIdx) return s;
+      const merged = { ...s, ...updates };
+      // Recalc duration and rate if time or service/sitter changed
+      const dur = calcDurationMinutes(merged.startTime, merged.endTime);
+      const targetSitter =
+        allSitters.find((as) => as.id === merged.sitterId) ?? sitter;
+      const rateObj = targetSitter.serviceRates?.find(
+        (r) => r.service === merged.service,
+      );
+      const ratePerHour = rateObj
+        ? rateObj.ratePerHour
+        : targetSitter.hourlyRate;
+      return { ...merged, durationMinutes: BigInt(dur), ratePerHour };
+    });
+    updateDay(date, updatedSlots);
+  };
+
+  const removeSlot = (date: string, slotIdx: number) => {
+    const day = getOrCreateDay(date);
+    updateDay(
+      date,
+      day.slots.filter((_, i) => i !== slotIdx),
+    );
+  };
+
+  const allSlots = serviceSchedule.flatMap((d) =>
+    d.slots.map((s) => ({ ...s, date: d.date })),
+  );
+  const subtotal = allSlots.reduce((sum, s) => sum + getSlotCost(s), 0);
+  const bundleDiscount = allSlots.length >= 3 ? subtotal * 0.1 : 0;
+  const grandTotal = subtotal - bundleDiscount;
+
+  const servicesToShow =
+    selectedServices.length > 0 ? selectedServices : sitter.services;
+
+  return (
+    <div className="space-y-4">
+      {/* Day Builder */}
+      <div className="space-y-3">
+        {days.map((date) => {
+          const day = getOrCreateDay(date);
+          const d = new Date(`${date}T12:00:00`);
+          const label = d.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+          return (
+            <div
+              key={date}
+              className="border border-border rounded-xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b border-border">
+                <p className="text-sm font-semibold">{label}</p>
+                <button
+                  type="button"
+                  onClick={() => addSlot(date)}
+                  className="flex items-center gap-1 text-xs text-primary hover:opacity-80 font-medium"
+                >
+                  <Plus size={13} /> Add Service
+                </button>
+              </div>
+              {day.slots.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-4 py-3">
+                  No services — click Add Service
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {day.slots.map((slot, slotIdx) => (
+                    <div
+                      key={slotIdx}
+                      className="px-4 py-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center"
+                    >
+                      <Select
+                        value={slot.service}
+                        onValueChange={(v) =>
+                          updateSlot(date, slotIdx, { service: v })
+                        }
+                      >
+                        <SelectTrigger className="rounded-lg h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {servicesToShow.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={slot.sitterId.toString()}
+                        onValueChange={(v) =>
+                          updateSlot(date, slotIdx, { sitterId: BigInt(v) })
+                        }
+                      >
+                        <SelectTrigger className="rounded-lg h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allSitters
+                            .filter((s) => selectedSitterIds.includes(s.id))
+                            .map((s) => (
+                              <SelectItem
+                                key={s.id.toString()}
+                                value={s.id.toString()}
+                              >
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <input
+                        type="time"
+                        value={slot.startTime}
+                        onChange={(e) =>
+                          updateSlot(date, slotIdx, {
+                            startTime: e.target.value,
+                          })
+                        }
+                        className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9"
+                      />
+                      <input
+                        type="time"
+                        value={slot.endTime}
+                        onChange={(e) =>
+                          updateSlot(date, slotIdx, { endTime: e.target.value })
+                        }
+                        className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSlot(date, slotIdx)}
+                        className="text-destructive hover:bg-destructive/10 rounded-full p-1.5"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Cart Panel */}
+      {allSlots.length > 0 && (
+        <div className="bg-indigo-950 text-white rounded-2xl p-5 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">
+            Your Order
+          </p>
+          <div className="space-y-2">
+            {allSlots.map((slot, i) => {
+              const cost = getSlotCost(slot);
+              const sitterName =
+                allSitters.find((s) => s.id === slot.sitterId)?.name ??
+                "Sitter";
+              const d = new Date(`${slot.date}T12:00:00`);
+              const dayLabel = d.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              });
+              return (
+                <div
+                  key={i}
+                  className="flex items-start justify-between gap-2 text-sm"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium leading-tight">{slot.service}</p>
+                    <p className="text-indigo-300 text-xs">
+                      {dayLabel} · {slot.startTime}–{slot.endTime} ·{" "}
+                      {sitterName}
+                    </p>
+                  </div>
+                  <span className="font-semibold shrink-0">
+                    ${cost.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="border-t border-indigo-800 pt-3 space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-indigo-300">Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            {bundleDiscount > 0 && (
+              <div className="flex justify-between text-sm text-emerald-400">
+                <span>Bundle discount (10%)</span>
+                <span>-${bundleDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-base pt-1 border-t border-indigo-800">
+              <span>Total</span>
+              <span className="text-amber-400">${grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+          {allSlots.length >= 3 && (
+            <p className="text-xs text-emerald-400 text-center">
+              🎉 Bundle discount applied!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface PetFormState {
   _id: number;
   petName: string;
@@ -133,7 +435,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const createBooking = useCreateBooking();
 
   const [step, setStep] = useState(0);
-  const [confirmedBooking, setConfirmedBooking] = useState<Public__3 | null>(
+  const [confirmedBooking, setConfirmedBooking] = useState<Public__4 | null>(
     null,
   );
 
@@ -144,6 +446,9 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
     sitterId,
   ]);
   // Step 3: Dates
+  const [serviceSchedule, setServiceSchedule] = useState<DayServiceSchedule[]>(
+    [],
+  );
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState("");
@@ -237,9 +542,20 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
         petNotes: p.petNotes || undefined,
       }));
 
+      // Derive services from schedule (backward compat) or use selectedServices
+      const scheduleServices =
+        serviceSchedule.length > 0
+          ? [
+              ...new Set(
+                serviceSchedule.flatMap((d) => d.slots.map((s) => s.service)),
+              ),
+            ]
+          : selectedServices;
       const booking = await createBooking.mutateAsync({
         sitterIds: selectedSitterIds,
-        services: selectedServices,
+        services: scheduleServices,
+        serviceSchedule:
+          serviceSchedule.length > 0 ? serviceSchedule : undefined,
         startDate: startNs,
         endDate: endNs,
         pets: mappedPets,
@@ -569,17 +885,19 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
             </div>
           )}
 
-          {/* Step 3: Dates */}
+          {/* Step 3: Schedule & Services */}
           {step === 3 && (
             <div className="space-y-6">
               <div>
                 <h2 className="font-display text-2xl font-bold">
-                  Choose Dates
+                  Schedule &amp; Services
                 </h2>
                 <p className="text-muted-foreground text-sm mt-1">
-                  When do you need care?
+                  Set dates and build your daily service schedule
                 </p>
               </div>
+
+              {/* Date Range */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Drop-off Date</Label>
@@ -588,6 +906,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                     onChange={(iso) => {
                       setStartDate(iso);
                       if (endDate && endDate < iso) setEndDate("");
+                      setServiceSchedule([]);
                     }}
                     placeholder="Pick start date"
                     disabled={(d) => d < today}
@@ -610,7 +929,10 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   <Label>Pick-up Date</Label>
                   <DatePicker
                     value={endDate}
-                    onChange={setEndDate}
+                    onChange={(iso) => {
+                      setEndDate(iso);
+                      setServiceSchedule([]);
+                    }}
                     placeholder="Pick end date"
                     disabled={(d) => {
                       if (d < today) return true;
@@ -634,15 +956,22 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   </div>
                 </div>
               </div>
+
+              {/* Day-by-Day Service Scheduler */}
               {startDate && endDate && (
-                <div className="p-3 bg-secondary/50 rounded-lg text-sm">
-                  <span className="font-medium">{calcDays()} day(s)</span> ·
-                  Estimated:{" "}
-                  <span className="font-bold text-primary">${totalCost}</span>{" "}
-                  for {selectedSitterIds.length} sitter
-                  {selectedSitterIds.length !== 1 ? "s" : ""}
-                </div>
+                <DayServiceScheduler
+                  startDate={startDate}
+                  endDate={endDate}
+                  selectedServices={selectedServices}
+                  selectedSitterIds={selectedSitterIds}
+                  allSitters={allSitters as Public[]}
+                  sitter={sitter}
+                  serviceSchedule={serviceSchedule}
+                  onScheduleChange={setServiceSchedule}
+                />
               )}
+
+              {/* Recurring */}
               <div className="border border-border rounded-xl p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -667,7 +996,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                         value={recurrencePattern}
                         onValueChange={setRecurrencePattern}
                       >
-                        <SelectTrigger className="rounded-lg">
+                        <SelectTrigger className="rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

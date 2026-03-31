@@ -9,9 +9,12 @@ import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 
-
-
+// Apply migration with `with` clause
+(with migration = Migration.run)
 actor {
   module SitterProfile {
     public type Id = Nat;
@@ -28,6 +31,7 @@ actor {
       reviewCount : Nat;
       isActive : Bool;
       owner : ?Principal;
+      serviceRates : [SitterServiceRate.Public];
     };
 
     public type Update = {
@@ -48,6 +52,13 @@ actor {
       hourlyRate : Nat;
       location : Text;
       photoUrl : Text;
+    };
+  };
+
+  module SitterServiceRate {
+    public type Public = {
+      service : Text;
+      ratePerHour : Nat;
     };
   };
 
@@ -74,6 +85,30 @@ actor {
       #monthly;
     };
 
+    public type TimeSlot = {
+      startTime : Time.Time;
+      endTime : Time.Time;
+    };
+
+    public type DaySchedule = {
+      date : Time.Time;
+      slots : [TimeSlot];
+    };
+
+    public type ServiceSlot = {
+      service : Text;
+      sitterId : Nat;
+      startTime : Text;
+      endTime : Text;
+      ratePerHour : Nat;
+      durationMinutes : Nat;
+    };
+
+    public type DayServiceSchedule = {
+      date : Text;
+      slots : [ServiceSlot];
+    };
+
     public type Public = {
       id : Id;
       clientName : Text;
@@ -93,6 +128,8 @@ actor {
       paymentSessionId : ?Text;
       stripePaymentIntentId : ?Text;
       tip : ?Nat;
+      schedule : ?[DaySchedule];
+      serviceSchedule : ?[DayServiceSchedule];
     };
 
     public type Creation = {
@@ -109,6 +146,8 @@ actor {
       recurrencePattern : ?RecurrencePattern;
       recurrenceEndDate : ?Time.Time;
       tip : ?Nat;
+      schedule : ?[DaySchedule];
+      serviceSchedule : ?[DayServiceSchedule];
     };
   };
 
@@ -230,11 +269,31 @@ actor {
   let payments = Map.empty<Booking.Id, PaymentRecord.Public>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
+  // New rate state
+  let serviceRates = Map.empty<Nat, Map.Map<Text, Nat>>();
+
   var nextSitterId = 1;
   var nextBookingId = 1;
   var nextServiceLogId = 1;
 
   var stripeConfig : ?Stripe.StripeConfiguration = null;
+
+  // Helper function to check if caller is a sitter assigned to a booking
+  func isCallerAssignedSitter(caller : Principal, booking : Booking.Public) : Bool {
+    if (caller.isAnonymous()) { return false };
+    
+    for (sitterId in booking.sitterIds.values()) {
+      switch (sitters.get(sitterId)) {
+        case (null) { /* skip */ };
+        case (?profile) {
+          if (profile.owner == ?caller) {
+            return true;
+          };
+        };
+      };
+    };
+    false;
+  };
 
   // Admin setup: allows the first logged-in user to claim admin role
   // Only works when no admin has been assigned yet — safe to leave open
@@ -246,14 +305,12 @@ actor {
     true;
   };
 
-
   // Returns true if at least one admin has been set up
   public query func isAdminAssigned() : async Bool {
     accessControlState.adminAssigned;
   };
 
   // User Profile Functions (Required by frontend)
-
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can access profiles");
@@ -276,7 +333,6 @@ actor {
   };
 
   // Sitter Profile CRUD
-
   public shared ({ caller }) func createSitterProfile(input : SitterProfile.Creation) : async SitterProfile.Public {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can create sitter profiles");
@@ -292,6 +348,7 @@ actor {
       reviewCount = 0;
       isActive = isAdmin;
       owner = ?caller;
+      serviceRates = [];
     };
 
     sitters.add(nextSitterId, newProfile);
@@ -334,6 +391,7 @@ actor {
           reviewCount = profile.reviewCount;
           isActive = input.isActive;
           owner = profile.owner;
+          serviceRates = profile.serviceRates;
         };
 
         sitters.add(input.id, updated);
@@ -381,8 +439,28 @@ actor {
     };
   };
 
-  // Sitter Availability Functions
+  // SitterServiceRate CRUD
+  public query ({ caller }) func getSitterServiceRates(sitterId : SitterProfile.Id) : async [SitterServiceRate.Public] {
+    switch (sitters.get(sitterId)) {
+      case (null) { Runtime.trap("Sitter not found") };
+      case (?profile) { profile.serviceRates };
+    };
+  };
 
+  public shared ({ caller }) func setSitterServiceRates(sitterId : SitterProfile.Id, rates : [SitterServiceRate.Public]) : async () {
+    switch (sitters.get(sitterId)) {
+      case (null) { Runtime.trap("Sitter not found") };
+      case (?profile) {
+        if (not AccessControl.isAdmin(accessControlState, caller) and (profile.owner != ?caller)) {
+          Runtime.trap("Unauthorized: Only the sitter or admin can update rates");
+        };
+        let updated = { profile with serviceRates = rates };
+        sitters.add(sitterId, updated);
+      };
+    };
+  };
+
+  // Sitter Availability Functions
   public shared ({ caller }) func setSitterAvailability(sitterId : SitterProfile.Id, entries : [SitterAvailability.AvailabilityEntry]) : async () {
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
@@ -406,7 +484,6 @@ actor {
   };
 
   // Booking Functions
-
   public shared ({ caller }) func createBooking(input : Booking.Creation) : async Booking.Public {
     // No authentication required - clients don't need to log in
 
@@ -436,6 +513,8 @@ actor {
       paymentSessionId = null;
       stripePaymentIntentId = null;
       tip = input.tip;
+      schedule = input.schedule;
+      serviceSchedule = input.serviceSchedule;
     };
 
     bookings.add(nextBookingId, newBooking);
@@ -501,7 +580,6 @@ actor {
   };
 
   // Service Log Functions
-
   public shared ({ caller }) func postServiceLog(input : ServiceLog.Creation) : async ServiceLog.Public {
     switch (sitters.get(input.sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
@@ -547,14 +625,18 @@ actor {
   public query ({ caller }) func getServiceLogsByBooking(bookingId : Booking.Id) : async [ServiceLog.Public] {
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
-      case (?_booking) {
+      case (?booking) {
+        // Authorization: Admin or assigned sitter can view service logs
+        if (not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+          Runtime.trap("Unauthorized: Only assigned sitters or admin can view service logs");
+        };
+        
         serviceLogs.values().toArray().filter(func(log : ServiceLog.Public) : Bool { log.bookingId == bookingId });
       };
     };
   };
 
   // Payment Functions
-
   public shared ({ caller }) func createPayment(input : PaymentRecord.Creation) : async PaymentRecord.Public {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can create payment records");
@@ -625,11 +707,15 @@ actor {
   };
 
   // Message Functions
-
   public shared ({ caller }) func addMessage(bookingId : Booking.Id, senderName : Text, content : Text) : async () {
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
-      case (?_booking) {
+      case (?booking) {
+        // Authorization: Admin, assigned sitter, or anonymous (for clients)
+        if (not caller.isAnonymous() and not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+          Runtime.trap("Unauthorized: Only assigned sitters, admin, or clients can add messages");
+        };
+
         let newMessage : Message.Message = {
           senderId = if (caller.isAnonymous()) { null } else { ?caller };
           senderName;
@@ -651,7 +737,13 @@ actor {
   public query ({ caller }) func getMessages(bookingId : Booking.Id) : async [Message.Message] {
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
-      case (?_booking) {
+      case (?booking) {
+        // Authorization: Admin or assigned sitter can view messages
+        // Note: Clients can't authenticate, so they can't retrieve messages via this endpoint
+        if (not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+          Runtime.trap("Unauthorized: Only assigned sitters or admin can view messages");
+        };
+
         switch (messages.get(bookingId)) {
           case (null) { [] };
           case (?msgList) { msgList.values().toArray() };
@@ -661,7 +753,6 @@ actor {
   };
 
   // Stripe Integration
-
   public query ({ caller }) func isStripeConfigured() : async Bool {
     stripeConfig != null;
   };

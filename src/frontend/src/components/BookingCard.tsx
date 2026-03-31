@@ -10,13 +10,13 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import type { Public, Public__3 } from "../backend.d";
+import type { Public, Public__4 } from "../backend.d";
 import InvoiceModal from "./InvoiceModal";
 import MessageThread from "./MessageThread";
 import StatusBadge from "./StatusBadge";
 
 interface BookingCardProps {
-  booking: Public__3;
+  booking: Public__4;
   senderName: string;
   onConfirm?: (id: bigint) => void;
   onComplete?: (id: bigint) => void;

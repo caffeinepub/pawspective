@@ -20,12 +20,13 @@ import {
   PawPrint,
   Receipt,
   Save,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
-import type { AvailabilityEntry, Public, Public__3 } from "../backend.d";
+import type { AvailabilityEntry, Public, Public__4 } from "../backend.d";
 import BookingCard from "../components/BookingCard";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import SitterInvoicesTab from "../components/SitterInvoicesTab";
@@ -34,10 +35,14 @@ import {
   useAllSitters,
   useBookingsBySitter,
   useCallerProfile,
+  useClaimFirstAdmin,
   useCreateSitter,
+  useIsAdminAssigned,
   useSaveProfile,
   useSetSitterAvailability,
+  useSetSitterServiceRates,
   useSitterAvailability,
+  useSitterServiceRates,
   useUpdateBookingStatus,
   useUpdateSitter,
 } from "../hooks/useQueries";
@@ -199,6 +204,146 @@ function AvailabilityEditor({ sitterId }: { sitterId: bigint }) {
   );
 }
 
+function ServiceRatesEditor({
+  sitter,
+  selectedServices,
+}: { sitter: Public; selectedServices: string[] }) {
+  const { data: existingRates = [] } = useSitterServiceRates(sitter.id);
+  const setRates = useSetSitterServiceRates();
+  const [rateMap, setRateMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    // Pre-fill from existing rates or fall back to sitter hourlyRate
+    for (const svc of selectedServices) {
+      const existing = (
+        existingRates as Array<{ service: string; ratePerHour: bigint }>
+      ).find((r) => r.service === svc);
+      map[svc] = existing
+        ? String(existing.ratePerHour)
+        : String(sitter.hourlyRate);
+    }
+    setRateMap(map);
+  }, [existingRates, selectedServices, sitter.hourlyRate]);
+
+  const handleSaveRates = async () => {
+    try {
+      const rates = selectedServices.map((svc) => ({
+        service: svc,
+        ratePerHour: BigInt(rateMap[svc] || "0"),
+      }));
+      await setRates.mutateAsync({ sitterId: sitter.id, rates });
+      toast.success("Service rates saved!");
+    } catch {
+      toast.error("Failed to save rates.");
+    }
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-3 sm:col-span-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-indigo-900">
+          Service Rates ($/day)
+        </p>
+        <Button
+          size="sm"
+          onClick={handleSaveRates}
+          disabled={setRates.isPending}
+          className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white h-8 px-4 text-xs font-semibold"
+          data-ocid="profile.rates.save_button"
+        >
+          {setRates.isPending ? (
+            <>
+              <Loader2 size={12} className="mr-1 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save size={12} className="mr-1" />
+              Save Rates
+            </>
+          )}
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {selectedServices.map((svc) => (
+          <div key={svc} className="flex items-center gap-3">
+            <span className="flex-1 text-sm text-indigo-800 font-medium">
+              {svc}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="0"
+                value={rateMap[svc] ?? ""}
+                onChange={(e) =>
+                  setRateMap((prev) => ({ ...prev, [svc]: e.target.value }))
+                }
+                className="w-24 rounded-lg h-9 text-sm"
+                placeholder="0"
+              />
+              <span className="text-xs text-muted-foreground">/hr</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminClaimSection({
+  navigate,
+}: { navigate: (view: import("../App").View) => void }) {
+  const { data: adminAssigned } = useIsAdminAssigned();
+  const claimAdmin = useClaimFirstAdmin();
+
+  if (adminAssigned === true) return null;
+
+  return (
+    <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl sm:col-span-2">
+      <div className="flex items-start gap-3">
+        <ShieldCheck size={18} className="text-amber-600 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-bold text-amber-800">Admin Access</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            No admin has been configured yet. You can claim admin access for
+            this app.
+          </p>
+          <Button
+            size="sm"
+            onClick={() =>
+              claimAdmin.mutate(undefined, {
+                onSuccess: (claimed) => {
+                  if (claimed) {
+                    toast.success("Admin access claimed!");
+                    navigate("admin-dashboard");
+                  } else {
+                    toast.error("Admin is already configured by someone else.");
+                  }
+                },
+                onError: () => toast.error("Failed to claim admin access."),
+              })
+            }
+            disabled={claimAdmin.isPending}
+            className="mt-2 rounded-full bg-amber-600 hover:bg-amber-700 text-white h-8 px-4 text-xs font-semibold"
+            data-ocid="profile.claim_admin.button"
+          >
+            {claimAdmin.isPending ? (
+              <>
+                <Loader2 size={12} className="mr-1 animate-spin" />
+                Claiming...
+              </>
+            ) : (
+              "Claim Admin Access"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   navigate: (view: View) => void;
 }
@@ -320,16 +465,16 @@ export default function SitterDashboard({ navigate }: Props) {
   };
 
   const groupedBookings = {
-    pending: (bookings as Public__3[]).filter(
+    pending: (bookings as unknown as Public__4[]).filter(
       (b) => (b.status as string) === "pending",
     ),
-    confirmed: (bookings as Public__3[]).filter(
+    confirmed: (bookings as unknown as Public__4[]).filter(
       (b) => (b.status as string) === "confirmed",
     ),
-    completed: (bookings as Public__3[]).filter(
+    completed: (bookings as unknown as Public__4[]).filter(
       (b) => (b.status as string) === "completed",
     ),
-    cancelled: (bookings as Public__3[]).filter(
+    cancelled: (bookings as unknown as Public__4[]).filter(
       (b) => (b.status as string) === "cancelled",
     ),
   };
@@ -451,7 +596,7 @@ export default function SitterDashboard({ navigate }: Props) {
                         <div className="space-y-3">
                           {groupedBookings[tab].map((b, i) => (
                             <BookingCard
-                              key={b.id.toString()}
+                              key={(b as any).id.toString()}
                               booking={b}
                               senderName={mySitter?.name ?? "Sitter"}
                               index={i}
@@ -471,7 +616,7 @@ export default function SitterDashboard({ navigate }: Props) {
                                 mySitter &&
                                 (tab === "confirmed" || tab === "completed") ? (
                                   <ServiceLogTimeline
-                                    bookingId={b.id}
+                                    bookingId={(b as any).id}
                                     sitterId={mySitter.id}
                                     sitterName={mySitter.name}
                                     isActive={tab === "confirmed"}
@@ -497,7 +642,7 @@ export default function SitterDashboard({ navigate }: Props) {
               </h2>
               {mySitter ? (
                 <SitterInvoicesTab
-                  bookings={bookings as Public__3[]}
+                  bookings={bookings as unknown as Public__4[]}
                   allSitters={allSitters as Public[]}
                   sitterName={mySitter.name}
                 />
@@ -603,6 +748,15 @@ export default function SitterDashboard({ navigate }: Props) {
                     </div>
                   </div>
                 </div>
+                {/* Service Rates Editor */}
+                {mySitter && selectedServices.length > 0 && (
+                  <ServiceRatesEditor
+                    sitter={mySitter}
+                    selectedServices={selectedServices}
+                  />
+                )}
+                {/* Admin Access */}
+                <AdminClaimSection navigate={navigate} />
                 <Button
                   data-ocid="profile.save_button"
                   onClick={handleSaveProfile}

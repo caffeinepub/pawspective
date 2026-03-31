@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, PawPrint, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
 import type { View } from "../App";
-import type { Public__3 } from "../backend.d";
+import type { Public__4 } from "../backend.d";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
 import { useBookingsByEmail } from "../hooks/useQueries";
@@ -40,7 +40,7 @@ const PET_EMOJIS: Record<string, string> = {
   Other: "🐾",
 };
 
-function BookingActivityCard({ booking }: { booking: Public__3 }) {
+function BookingActivityCard({ booking }: { booking: Public__4 }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = getStatusKey(booking.status) === "confirmed";
 
@@ -213,7 +213,7 @@ export default function BookingLookupPage({ navigate }: Props) {
             <p className="font-semibold text-foreground">
               {bookings.length} booking{bookings.length !== 1 ? "s" : ""} found
             </p>
-            {(bookings as Public__3[]).map((b) => (
+            {(bookings as Public__4[]).map((b) => (
               <BookingActivityCard key={b.id.toString()} booking={b} />
             ))}
           </div>
