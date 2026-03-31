@@ -84,6 +84,14 @@ export default function HomePage({ navigate }: Props) {
             >
               Sitter Portal
             </button>
+            <button
+              type="button"
+              data-ocid="home.sitter_apply.link"
+              onClick={() => navigate("sitter-apply")}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              Become a Sitter
+            </button>
           </nav>
           <Button
             onClick={() =>
@@ -149,6 +157,15 @@ export default function HomePage({ navigate }: Props) {
                 className="rounded-full px-8 text-base font-semibold border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm"
               >
                 Track My Booking
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                data-ocid="home.sitter_apply.button"
+                onClick={() => navigate("sitter-apply")}
+                className="rounded-full px-8 text-base font-semibold border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+              >
+                Become a Sitter
               </Button>
             </div>
           </div>
@@ -351,6 +368,14 @@ export default function HomePage({ navigate }: Props) {
               className="hover:text-white transition-colors"
             >
               Sitter Portal
+            </button>
+            <button
+              type="button"
+              data-ocid="home.sitter_apply.link"
+              onClick={() => navigate("sitter-apply")}
+              className="hover:text-white transition-colors"
+            >
+              Become a Sitter
             </button>
             <button
               type="button"

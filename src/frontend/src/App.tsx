@@ -6,6 +6,7 @@ import BookingLookupPage from "./pages/BookingLookupPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import SitterApplicationPage from "./pages/SitterApplicationPage";
 import SitterDashboard from "./pages/SitterDashboard";
 import SitterDetailPage from "./pages/SitterDetailPage";
 
@@ -16,6 +17,7 @@ export type View =
   | "client-dashboard"
   | "sitter-dashboard"
   | "admin-dashboard"
+  | "sitter-apply"
   | "login";
 
 export default function App() {
@@ -47,6 +49,9 @@ export default function App() {
       )}
       {currentView === "admin-dashboard" && (
         <AdminDashboard navigate={navigate} />
+      )}
+      {currentView === "sitter-apply" && (
+        <SitterApplicationPage navigate={navigate} />
       )}
       {currentView === "login" && <LoginPage navigate={navigate} />}
       <MobileNav currentView={currentView} navigate={navigate} />
