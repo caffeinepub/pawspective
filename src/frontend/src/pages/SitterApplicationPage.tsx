@@ -25,7 +25,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import type { View } from "../App";
 import type { Public } from "../backend.d";
-import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useAllSitters, useCreateSitter } from "../hooks/useQueries";
 
@@ -134,7 +133,6 @@ export default function SitterApplicationPage({ navigate }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { data: allSitters = [] } = useAllSitters();
   const createSitter = useCreateSitter();
-  const { actor, isFetching: actorFetching } = useActor();
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
@@ -723,19 +721,9 @@ export default function SitterApplicationPage({ navigate }: Props) {
                         color: "#1a1a2e",
                       }}
                       onClick={handleSubmit}
-                      disabled={
-                        !canSubmit ||
-                        createSitter.isPending ||
-                        actorFetching ||
-                        !actor
-                      }
+                      disabled={!canSubmit || createSitter.isPending}
                     >
-                      {actorFetching || !actor ? (
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Connecting...
-                        </span>
-                      ) : createSitter.isPending ? (
+                      {createSitter.isPending ? (
                         <span className="flex items-center gap-2">
                           <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                           Submitting...
