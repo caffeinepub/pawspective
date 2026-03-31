@@ -274,7 +274,7 @@ export default function HomePage({ navigate }: Props) {
               </p>
               {(sitters as Public[]).length === 0 && (
                 <Button
-                  onClick={() => navigate("login")}
+                  onClick={() => navigate("sitter-apply")}
                   className="mt-5 rounded-full bg-primary text-primary-foreground"
                 >
                   Become a Sitter

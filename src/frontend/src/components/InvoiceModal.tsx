@@ -316,7 +316,7 @@ export default function InvoiceModal({
                               );
                               return (
                                 <tr
-                                  key={i}
+                                  key={`${slot.service}-${slot.sitterId}-${i}`}
                                   className="border-b border-gray-50 last:border-0"
                                 >
                                   <td className="py-2 pr-2 text-sm text-gray-800 font-medium align-top">

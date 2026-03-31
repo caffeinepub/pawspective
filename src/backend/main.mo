@@ -312,9 +312,7 @@ actor {
 
   // User Profile Functions (Required by frontend)
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
+    if (caller.isAnonymous()) { return null };
     userProfiles.get(caller);
   };
 
@@ -326,16 +324,26 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Must be logged in to save profile");
+    };
+    // Auto-assign #user role on first profile save if not already assigned
+    switch (accessControlState.userRoles.get(caller)) {
+      case (null) { accessControlState.userRoles.add(caller, #user) };
+      case (?_) { /* already has role */ };
     };
     userProfiles.add(caller, profile);
   };
 
   // Sitter Profile CRUD
   public shared ({ caller }) func createSitterProfile(input : SitterProfile.Creation) : async SitterProfile.Public {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can create sitter profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Must be logged in to create a sitter profile");
+    };
+    // Auto-assign #user role if not already assigned
+    switch (accessControlState.userRoles.get(caller)) {
+      case (null) { accessControlState.userRoles.add(caller, #user) };
+      case (?_) { /* already has role */ };
     };
 
     // Admins create active sitters directly; self-registered sitters are pending approval

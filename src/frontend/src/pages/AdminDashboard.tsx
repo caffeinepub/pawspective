@@ -44,6 +44,7 @@ import {
   Trash2,
   UserCheck,
   UserPlus,
+  UserX,
   Users,
   Wallet,
 } from "lucide-react";
@@ -70,13 +71,13 @@ import {
   useConfirmManualPayment,
   useCreatePayment,
   useCreateSitter,
-  useDeleteSitter,
   useIsAdmin,
   useIsAdminAssigned,
   useSetSitterAvailability,
   useSitterAvailability,
   useUpdateBookingStatus,
   useUpdatePaymentSplits,
+  useUpdateSitter,
 } from "../hooks/useQueries";
 
 const ALL_SERVICES = [
@@ -760,7 +761,7 @@ export default function AdminDashboard({ navigate }: Props) {
   const { data: bookings = [], isLoading: bookingsLoading } = useAllBookings();
   const { data: payments = [] } = useAllPayments();
   const updateStatus = useUpdateBookingStatus();
-  const deleteSitter = useDeleteSitter();
+  const updateSitter = useUpdateSitter();
   const approveSitter = useApproveSitter();
   const assignRole = useAssignRole();
   const confirmPayment = useConfirmManualPayment();
@@ -1056,16 +1057,29 @@ export default function AdminDashboard({ navigate }: Props) {
                             variant="ghost"
                             data-ocid={`admin.applications.delete_button.${i + 1}`}
                             className="rounded-full text-destructive hover:bg-destructive/10 gap-1"
-                            disabled={deleteSitter.isPending}
+                            disabled={updateSitter.isPending}
                             onClick={() =>
-                              deleteSitter.mutate(s.id, {
-                                onSuccess: () =>
-                                  toast.success(`${s.name} declined`),
-                                onError: () => toast.error("Failed to decline"),
-                              })
+                              updateSitter.mutate(
+                                {
+                                  id: s.id,
+                                  name: s.name,
+                                  bio: s.bio,
+                                  location: s.location,
+                                  photoUrl: s.photoUrl,
+                                  services: s.services,
+                                  hourlyRate: s.hourlyRate,
+                                  isActive: false,
+                                },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(`${s.name} declined`),
+                                  onError: () =>
+                                    toast.error("Failed to decline"),
+                                },
+                              )
                             }
                           >
-                            <Trash2 size={13} /> Decline
+                            <UserX size={13} /> Decline
                           </Button>
                         </div>
                       </div>
@@ -1162,17 +1176,45 @@ export default function AdminDashboard({ navigate }: Props) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+                              className={
+                                s.isActive
+                                  ? "text-destructive hover:bg-destructive/10 h-7 gap-1 px-2 text-xs"
+                                  : "text-emerald-600 hover:bg-emerald-50 h-7 gap-1 px-2 text-xs"
+                              }
                               data-ocid={`admin.sitters.delete_button.${i + 1}`}
                               onClick={() =>
-                                deleteSitter.mutate(s.id, {
-                                  onSuccess: () =>
-                                    toast.success(`${s.name} removed`),
-                                  onError: () => toast.error("Failed"),
-                                })
+                                updateSitter.mutate(
+                                  {
+                                    id: s.id,
+                                    name: s.name,
+                                    bio: s.bio,
+                                    location: s.location,
+                                    photoUrl: s.photoUrl,
+                                    services: s.services,
+                                    hourlyRate: s.hourlyRate,
+                                    isActive: !s.isActive,
+                                  },
+                                  {
+                                    onSuccess: () =>
+                                      toast.success(
+                                        s.isActive
+                                          ? `${s.name} deactivated`
+                                          : `${s.name} reactivated`,
+                                      ),
+                                    onError: () => toast.error("Failed"),
+                                  },
+                                )
                               }
                             >
-                              <Trash2 size={14} />
+                              {s.isActive ? (
+                                <>
+                                  <UserX size={13} /> Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck size={13} /> Reactivate
+                                </>
+                              )}
                             </Button>
                           </TableCell>
                         </TableRow>

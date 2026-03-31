@@ -16,7 +16,10 @@ import { format } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarDays,
+  Car,
   Check,
+  Home,
   Loader2,
   MapPin,
   PawPrint,
@@ -282,7 +285,7 @@ function DayServiceScheduler({
                 <div className="divide-y divide-border">
                   {day.slots.map((slot, slotIdx) => (
                     <div
-                      key={slotIdx}
+                      key={`${slot.service}-${slot.sitterId ?? ""}-${slotIdx}`}
                       className="px-4 py-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center"
                     >
                       <Select
@@ -377,7 +380,7 @@ function DayServiceScheduler({
               });
               return (
                 <div
-                  key={i}
+                  key={`${slot.service}-${slot.date}-${i}`}
                   className="flex items-start justify-between gap-2 text-sm"
                 >
                   <div className="flex-1 min-w-0">
@@ -456,6 +459,9 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrencePattern, setRecurrencePattern] = useState<string>("weekly");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
+  const [serviceLocation, setServiceLocation] = useState<"onsite" | "pickup">(
+    "onsite",
+  );
   // Step 4: Pets
   const [pets, setPets] = useState<PetFormState[]>([
     { _id: 0, petName: "", petType: "", breed: "", petNotes: "" },
@@ -562,7 +568,8 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
         clientName,
         clientEmail,
         clientPhone,
-        notes,
+        notes:
+          `[Location: ${serviceLocation === "onsite" ? "At My Home" : "Sitter Picks Up"}] ${notes}`.trim(),
         isRecurring,
         recurrencePattern: isRecurring
           ? (recurrencePattern as RecurrencePattern)
@@ -899,8 +906,12 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
 
               {/* Date Range */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Drop-off Date</Label>
+                {/* Start Date & Time Card */}
+                <div className="rounded-2xl border border-border bg-muted/30 p-4 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <CalendarDays size={16} className="text-primary" />
+                    Start Date &amp; Time
+                  </div>
                   <DatePicker
                     value={startDate}
                     onChange={(iso) => {
@@ -912,21 +923,21 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                     disabled={(d) => d < today}
                     ocid="booking.start_date.button"
                   />
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
-                      Drop-off Time
-                    </Label>
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      style={{ fontSize: "16px", minHeight: "52px" }}
-                    />
-                  </div>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    style={{ fontSize: "16px", minHeight: "52px" }}
+                    aria-label="Start time"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Pick-up Date</Label>
+                {/* End Date & Time Card */}
+                <div className="rounded-2xl border border-border bg-muted/30 p-4 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <CalendarDays size={16} className="text-primary" />
+                    End Date &amp; Time
+                  </div>
                   <DatePicker
                     value={endDate}
                     onChange={(iso) => {
@@ -942,18 +953,49 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                     }}
                     ocid="booking.end_date.button"
                   />
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
-                      Pick-up Time
-                    </Label>
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      style={{ fontSize: "16px", minHeight: "52px" }}
-                    />
-                  </div>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    style={{ fontSize: "16px", minHeight: "52px" }}
+                    aria-label="End time"
+                  />
+                </div>
+              </div>
+
+              {/* Service Location Toggle */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">
+                  Service Location
+                </Label>
+                <div className="flex rounded-xl border border-border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setServiceLocation("onsite")}
+                    data-ocid="booking.onsite.toggle"
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+                      serviceLocation === "onsite"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Home size={16} />
+                    At My Home
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceLocation("pickup")}
+                    data-ocid="booking.pickup.toggle"
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-l border-border ${
+                      serviceLocation === "pickup"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Car size={16} />
+                    Sitter Picks Up
+                  </button>
                 </div>
               </div>
 
