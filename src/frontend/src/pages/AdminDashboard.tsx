@@ -76,6 +76,7 @@ import {
   useAllSitters,
   useApproveSitter,
   useAssignRole,
+  useCallerProfile,
   useClaimFirstAdmin,
   useConfirmManualPayment,
   useCreatePayment,
@@ -749,6 +750,19 @@ function AdminAvailabilityTab({ sitters }: { sitters: Public[] }) {
         </Select>
       </div>
 
+      {!selectedSitterId && sitters.length > 0 && (
+        <div className="flex items-center gap-3 p-4 bg-muted/40 rounded-xl border border-border text-sm text-muted-foreground">
+          <CalendarDays
+            size={20}
+            className="shrink-0 text-primary opacity-70"
+          />
+          <span>
+            Select a sitter from the dropdown above to view and edit their
+            weekly availability schedule.
+          </span>
+        </div>
+      )}
+
       {sitters.length === 0 && (
         <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
           <CalendarDays size={32} className="opacity-30" />
@@ -1010,6 +1024,7 @@ export default function AdminDashboard({
   setDarkMode,
 }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
+  const { data: adminProfile } = useCallerProfile();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: adminAssigned } = useIsAdminAssigned();
   const claimAdmin = useClaimFirstAdmin();
@@ -1167,7 +1182,11 @@ export default function AdminDashboard({
               </button>
             )}
             <div className="flex items-center gap-2 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
-              <ShieldCheck size={12} /> Admin
+              <ShieldCheck size={12} />
+              <div className="w-6 h-6 rounded-full bg-emerald-700 text-white text-xs font-bold flex items-center justify-center">
+                {(adminProfile?.name ?? "A").charAt(0).toUpperCase()}
+              </div>
+              <span>{adminProfile?.name ?? "Admin"}</span>
             </div>
           </div>
         </div>

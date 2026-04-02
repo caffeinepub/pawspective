@@ -272,6 +272,7 @@ export interface backendInterface {
   getAllPayments(): Promise<Array<Public__3>>;
   getAllSitters(): Promise<Array<Public>>;
   getBookingsByClientEmail(clientEmail: string): Promise<Array<Public__4>>;
+  getBookingsByClientPhone(clientPhone: string): Promise<Array<Public__4>>;
   getBookingsBySitter(sitterId: Id): Promise<Array<Public__4>>;
   getCallerUserProfile(): Promise<UserProfile | null>;
   getCallerUserRole(): Promise<UserRole>;

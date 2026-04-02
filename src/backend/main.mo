@@ -278,6 +278,15 @@ actor {
 
   var stripeConfig : ?Stripe.StripeConfiguration = null;
 
+  // Helper: safe admin check that never traps on unregistered principals
+  func callerIsAdmin(caller : Principal) : Bool {
+    if (caller.isAnonymous()) { return false };
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) { true };
+      case (_) { false };
+    };
+  };
+
   // Helper function to check if caller is a sitter assigned to a booking
   func isCallerAssignedSitter(caller : Principal, booking : Booking.Public) : Bool {
     if (caller.isAnonymous()) { return false };
@@ -295,11 +304,14 @@ actor {
     false;
   };
 
-  // Admin setup: allows the first logged-in user to claim admin role
-  // Only works when no admin has been assigned yet — safe to leave open
+  // Admin setup: allows the first logged-in user to claim admin role.
+  // Also overwrites any existing #user role — so logging in first and then
+  // claiming admin works correctly even after _initializeAccessControlWithSecret
+  // pre-registered the caller as #user.
   public shared ({ caller }) func claimFirstAdmin() : async Bool {
     if (caller.isAnonymous()) { return false };
     if (accessControlState.adminAssigned) { return false };
+    // Overwrite any existing role (e.g. #user assigned during initialize())
     accessControlState.userRoles.add(caller, #admin);
     accessControlState.adminAssigned := true;
     true;
@@ -317,7 +329,7 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
@@ -347,7 +359,7 @@ actor {
     };
 
     // Admins create active sitters directly; self-registered sitters are pending approval
-    let isAdmin = AccessControl.isAdmin(accessControlState, caller);
+    let isAdmin = callerIsAdmin(caller);
 
     let newProfile : SitterProfile.Public = {
       input with
@@ -383,7 +395,7 @@ actor {
     switch (sitters.get(input.id)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+        if (not callerIsAdmin(caller) and profile.owner != ?caller) {
           Runtime.trap("Unauthorized: Only the sitter or admin can update this profile");
         };
 
@@ -412,7 +424,7 @@ actor {
     switch (sitters.get(id)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+        if (not callerIsAdmin(caller) and profile.owner != ?caller) {
           Runtime.trap("Unauthorized: Only the sitter or admin can delete this profile");
         };
         sitters.remove(id);
@@ -421,8 +433,8 @@ actor {
   };
 
   public shared ({ caller }) func submitReview(sitterId : SitterProfile.Id, rating : Float) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can submit reviews");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Must be logged in to submit a review");
     };
 
     if (rating < 1.0 or rating > 5.0) {
@@ -459,7 +471,7 @@ actor {
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and (profile.owner != ?caller)) {
+        if (not callerIsAdmin(caller) and (profile.owner != ?caller)) {
           Runtime.trap("Unauthorized: Only the sitter or admin can update rates");
         };
         let updated = { profile with serviceRates = rates };
@@ -473,7 +485,7 @@ actor {
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+        if (not callerIsAdmin(caller) and profile.owner != ?caller) {
           Runtime.trap("Unauthorized: Only the sitter or admin can update availability");
         };
         let availability : SitterAvailability.Availability = {
@@ -534,7 +546,7 @@ actor {
     switch (bookings.get(bookingId)) {
       case (null) { Runtime.trap("Booking not found") };
       case (?booking) {
-        if (AccessControl.isAdmin(accessControlState, caller)) {
+        if (callerIsAdmin(caller)) {
           let updated = { booking with status = newStatus };
           bookings.add(bookingId, updated);
           return;
@@ -566,7 +578,7 @@ actor {
     switch (sitters.get(sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+        if (not callerIsAdmin(caller) and profile.owner != ?caller) {
           Runtime.trap("Unauthorized: Only the sitter or admin can view their bookings");
         };
       };
@@ -580,8 +592,13 @@ actor {
     bookings.values().toArray().filter(func(b : Booking.Public) : Bool { b.clientEmail == clientEmail });
   };
 
+
+  public query ({ caller }) func getBookingsByClientPhone(clientPhone : Text) : async [Booking.Public] {
+    // Open for client self-lookup - no auth required
+    bookings.values().toArray().filter(func(b : Booking.Public) : Bool { b.clientPhone == clientPhone });
+  };
   public query ({ caller }) func getAllBookings() : async [Booking.Public] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can view all bookings");
     };
     bookings.values().toArray();
@@ -592,7 +609,7 @@ actor {
     switch (sitters.get(input.sitterId)) {
       case (null) { Runtime.trap("Sitter not found") };
       case (?profile) {
-        if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+        if (not callerIsAdmin(caller) and profile.owner != ?caller) {
           Runtime.trap("Unauthorized: Only the sitter or admin can post service logs");
         };
         let newLog : ServiceLog.Public = {
@@ -619,7 +636,7 @@ actor {
         switch (sitters.get(log.sitterId)) {
           case (null) { Runtime.trap("Sitter not found") };
           case (?profile) {
-            if (not AccessControl.isAdmin(accessControlState, caller) and profile.owner != ?caller) {
+            if (not callerIsAdmin(caller) and profile.owner != ?caller) {
               Runtime.trap("Unauthorized: Only the sitter or admin can update service logs");
             };
             let updated = { log with stopTime = ?input.stopTime };
@@ -635,7 +652,7 @@ actor {
       case (null) { Runtime.trap("Booking not found") };
       case (?booking) {
         // Authorization: Admin or assigned sitter can view service logs
-        if (not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+        if (not callerIsAdmin(caller) and not isCallerAssignedSitter(caller, booking)) {
           Runtime.trap("Unauthorized: Only assigned sitters or admin can view service logs");
         };
         
@@ -646,7 +663,7 @@ actor {
 
   // Payment Functions
   public shared ({ caller }) func createPayment(input : PaymentRecord.Creation) : async PaymentRecord.Public {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can create payment records");
     };
 
@@ -669,7 +686,7 @@ actor {
   };
 
   public shared ({ caller }) func confirmManualPayment(bookingId : Booking.Id) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can confirm manual payments");
     };
 
@@ -688,7 +705,7 @@ actor {
   };
 
   public shared ({ caller }) func updatePaymentSplits(input : PaymentRecord.UpdateSplits) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can update payment splits");
     };
     switch (payments.get(input.bookingId)) {
@@ -701,14 +718,14 @@ actor {
   };
 
   public query ({ caller }) func getPayment(bookingId : Booking.Id) : async ?PaymentRecord.Public {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can view payment records");
     };
     payments.get(bookingId);
   };
 
   public query ({ caller }) func getAllPayments() : async [PaymentRecord.Public] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can view payment records");
     };
     payments.values().toArray();
@@ -720,7 +737,7 @@ actor {
       case (null) { Runtime.trap("Booking not found") };
       case (?booking) {
         // Authorization: Admin, assigned sitter, or anonymous (for clients)
-        if (not caller.isAnonymous() and not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+        if (not caller.isAnonymous() and not callerIsAdmin(caller) and not isCallerAssignedSitter(caller, booking)) {
           Runtime.trap("Unauthorized: Only assigned sitters, admin, or clients can add messages");
         };
 
@@ -747,8 +764,7 @@ actor {
       case (null) { Runtime.trap("Booking not found") };
       case (?booking) {
         // Authorization: Admin or assigned sitter can view messages
-        // Note: Clients can't authenticate, so they can't retrieve messages via this endpoint
-        if (not AccessControl.isAdmin(accessControlState, caller) and not isCallerAssignedSitter(caller, booking)) {
+        if (not callerIsAdmin(caller) and not isCallerAssignedSitter(caller, booking)) {
           Runtime.trap("Unauthorized: Only assigned sitters or admin can view messages");
         };
 
@@ -766,7 +782,7 @@ actor {
   };
 
   public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not callerIsAdmin(caller)) {
       Runtime.trap("Unauthorized: Only admins can configure Stripe");
     };
     stripeConfig := ?config;

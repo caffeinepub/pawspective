@@ -80,6 +80,19 @@ export function useBookingsByEmail(email: string) {
   });
 }
 
+export function useBookingsByPhone(phone: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["bookings-phone", phone],
+    queryFn: async () => {
+      if (!actor || !phone) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getBookingsByClientPhone(phone);
+    },
+    enabled: !!actor && !isFetching && !!phone,
+  });
+}
+
 export function useBookingsBySitter(sitterId: bigint | null) {
   const { actor, isFetching } = useActor();
   return useQuery({
@@ -492,7 +505,7 @@ export function useIsAdminAssigned() {
   return useQuery({
     queryKey: ["is-admin-assigned"],
     queryFn: async () => {
-      if (!actor) return true; // default to true (safe fallback)
+      if (!actor) return false; // default to false so the Claim button can show
       return actor.isAdminAssigned();
     },
     enabled: !!actor && !isFetching,

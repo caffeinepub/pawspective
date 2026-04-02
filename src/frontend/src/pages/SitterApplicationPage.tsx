@@ -187,7 +187,7 @@ export default function SitterApplicationPage({ navigate }: Props) {
         location: form.location,
         photoUrl: form.photoUrl,
         services: form.services,
-        hourlyRate: BigInt(Math.round(Number(form.hourlyRate) * 100)),
+        hourlyRate: BigInt(Math.round(Number(form.hourlyRate))),
       });
       setSubmittedName(form.name);
       setSubmitted(true);

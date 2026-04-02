@@ -527,10 +527,22 @@ export default function SitterDashboard({
                 {darkMode ? <Sun size={15} /> : <Moon size={15} />}
               </button>
             )}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-              <User size={12} />
-              <span className="hidden sm:inline">
-                {principal?.slice(0, 12)}...
+            <div className="flex items-center gap-2 text-sm font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full">
+              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0">
+                {mySitter?.photoUrl ? (
+                  <img
+                    src={mySitter.photoUrl}
+                    alt={profile?.name ?? name ?? "Sitter"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                    {(profile?.name ?? name ?? "S").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <span className="hidden sm:inline max-w-[120px] truncate">
+                {(profile?.name ?? name ?? "Sitter").slice(0, 20)}
               </span>
             </div>
           </div>

@@ -2,10 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   CalendarDays,
+  Mail,
   PawPrint,
+  Phone,
   RefreshCw,
   Search,
   Star,
@@ -19,6 +22,7 @@ import StatusBadge from "../components/StatusBadge";
 import {
   useActiveSitters,
   useBookingsByEmail,
+  useBookingsByPhone,
   useSubmitReview,
 } from "../hooks/useQueries";
 
@@ -42,7 +46,7 @@ function getStatusKey(status: unknown): string {
   return String(status ?? "");
 }
 
-// Item 2: Star picker component
+// Star picker component
 function StarPicker({
   value,
   onChange,
@@ -80,21 +84,36 @@ export default function ClientDashboard({
   navigate,
   initialEmail = "",
 }: Props) {
+  const [lookupMode, setLookupMode] = useState<"email" | "phone">("email");
   const [emailInput, setEmailInput] = useState(initialEmail);
   const [submittedEmail, setSubmittedEmail] = useState(initialEmail);
-  const { data: bookings = [], isLoading } = useBookingsByEmail(submittedEmail);
-  // Item 4: load sitters to show names/avatars
+  const [phoneInput, setPhoneInput] = useState("");
+  const [submittedPhone, setSubmittedPhone] = useState("");
+  const { data: emailBookings = [], isLoading: emailLoading } =
+    useBookingsByEmail(submittedEmail);
+  const { data: phoneBookings = [], isLoading: phoneLoading } =
+    useBookingsByPhone(submittedPhone);
+  const bookings = lookupMode === "email" ? emailBookings : phoneBookings;
+  const isLoading = lookupMode === "email" ? emailLoading : phoneLoading;
+  const submittedIdentifier =
+    lookupMode === "email" ? submittedEmail : submittedPhone;
+  // Load sitters to show names/avatars
   const { data: allSittersRaw = [] } = useActiveSitters();
   const allSitters = allSittersRaw as Public[];
 
-  // Item 2: track reviewed booking IDs and active review state
+  // Track reviewed booking IDs and active review state
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
   const submitReview = useSubmitReview();
 
   const handleSearch = () => {
-    if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
+    if (lookupMode === "email") {
+      if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
+    } else {
+      if (phoneInput.trim()) setSubmittedPhone(phoneInput.trim());
+    }
   };
 
   const getSitterName = (sid: bigint) => {
@@ -115,7 +134,12 @@ export default function ClientDashboard({
       setReviewedIds((prev) => new Set([...prev, booking.id.toString()]));
       setReviewingId(null);
       setReviewRating(5);
-      toast.success("Review submitted! Thank you.");
+      setReviewText("");
+      toast.success(
+        `Review submitted! Thank you.${
+          reviewText ? " Your feedback helps other pet owners." : ""
+        }`,
+      );
     } catch {
       toast.error("Failed to submit review.");
     }
@@ -132,38 +156,107 @@ export default function ClientDashboard({
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("home")}
-            className="flex items-center gap-1.5 text-sm font-medium text-primary hover:opacity-80"
-          >
-            <ArrowLeft size={16} /> Home
-          </button>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-display font-semibold">My Bookings</span>
+        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("home")}
+              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:opacity-80"
+            >
+              <ArrowLeft size={16} /> Home
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-display font-semibold">My Bookings</span>
+          </div>
+          {bookings.length > 0 &&
+            (() => {
+              const clientName = (bookings as Public__4[])[0]?.clientName ?? "";
+              if (!clientName) return null;
+              return (
+                <div className="flex items-center gap-2 text-sm font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full">
+                  <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                    {clientName.charAt(0).toUpperCase()}
+                  </div>
+                  <span>{clientName}</span>
+                </div>
+              );
+            })()}
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
+        {/* ── Find Your Bookings card ── */}
         <div className="bg-card rounded-2xl border border-border shadow-xs p-6 mb-6">
+          <h2 className="font-semibold text-base mb-1">Find Your Bookings</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Enter the email or phone number you used when booking. We use your
+            contact info to keep you updated on your pet&apos;s care and to
+            reach you if needed.
+          </p>
+
+          {/* Segmented toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              data-ocid="client.lookup_email.toggle"
+              onClick={() => setLookupMode("email")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors border ${
+                lookupMode === "email"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent border-border text-foreground hover:bg-muted"
+              }`}
+            >
+              <Mail size={15} />
+              Email Address
+            </button>
+            <button
+              type="button"
+              data-ocid="client.lookup_phone.toggle"
+              onClick={() => setLookupMode("phone")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors border ${
+                lookupMode === "phone"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent border-border text-foreground hover:bg-muted"
+              }`}
+            >
+              <Phone size={15} />
+              Phone Number
+            </button>
+          </div>
+
+          {/* Input + search */}
           <Label
-            htmlFor="cd-email"
+            htmlFor={lookupMode === "email" ? "cd-email" : "cd-phone"}
             className="text-sm font-semibold mb-2 block"
           >
-            Your Email
+            {lookupMode === "email"
+              ? "Your Email Address"
+              : "Your Phone Number"}
           </Label>
           <div className="flex gap-2">
-            <Input
-              data-ocid="client.email.input"
-              id="cd-email"
-              type="email"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="jane@example.com"
-              className="rounded-full"
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
+            {lookupMode === "email" ? (
+              <Input
+                data-ocid="client.email.input"
+                id="cd-email"
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="jane@example.com"
+                className="rounded-full"
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            ) : (
+              <Input
+                data-ocid="client.phone.input"
+                id="cd-phone"
+                type="tel"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="(555) 123-4567"
+                className="rounded-full"
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            )}
             <Button
               data-ocid="client.search.button"
               onClick={handleSearch}
@@ -182,7 +275,7 @@ export default function ClientDashboard({
           </div>
         )}
 
-        {!isLoading && submittedEmail && bookings.length === 0 && (
+        {!isLoading && submittedIdentifier && bookings.length === 0 && (
           <div data-ocid="client.empty_state" className="text-center py-16">
             <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-5">
               <PawPrint size={36} className="text-primary" />
@@ -191,7 +284,7 @@ export default function ClientDashboard({
               No bookings found
             </h3>
             <p className="text-muted-foreground mt-1">
-              No bookings for <strong>{submittedEmail}</strong>
+              No bookings for <strong>{submittedIdentifier}</strong>
             </p>
             <Button
               onClick={() => navigate("home")}
@@ -216,6 +309,10 @@ export default function ClientDashboard({
               const bookingIdStr = b.id.toString();
               const alreadyReviewed = reviewedIds.has(bookingIdStr);
               const isReviewing = reviewingId === bookingIdStr;
+              const sitterName =
+                b.sitterIds && b.sitterIds.length > 0
+                  ? getSitterName(b.sitterIds[0])
+                  : "your sitter";
 
               return (
                 <div
@@ -233,7 +330,6 @@ export default function ClientDashboard({
                         <StatusBadge status={b.status} />
                       </div>
                       <div className="flex gap-1.5">
-                        {/* Item 4: Book Again button */}
                         <Button
                           size="sm"
                           variant="outline"
@@ -247,7 +343,7 @@ export default function ClientDashboard({
                       </div>
                     </div>
 
-                    {/* Sitter info row - Item 4 */}
+                    {/* Sitter info row */}
                     {b.sitterIds && b.sitterIds.length > 0 && (
                       <div className="flex items-center gap-2 mb-2">
                         {b.sitterIds.slice(0, 2).map((sid) => {
@@ -296,7 +392,7 @@ export default function ClientDashboard({
                       </div>
                     </div>
 
-                    {/* Item 2: Leave a Review for completed bookings */}
+                    {/* Rate This Service — for completed bookings */}
                     {isCompleted && !alreadyReviewed && (
                       <div className="mt-3">
                         {!isReviewing ? (
@@ -307,11 +403,12 @@ export default function ClientDashboard({
                             onClick={() => {
                               setReviewingId(bookingIdStr);
                               setReviewRating(5);
+                              setReviewText("");
                             }}
                             className="rounded-full h-7 px-3 text-xs gap-1 border-accent text-accent hover:bg-accent/10"
                           >
                             <Star size={11} />
-                            Leave a Review
+                            Rate This Service
                           </Button>
                         ) : (
                           <div
@@ -319,12 +416,25 @@ export default function ClientDashboard({
                             className="mt-2 p-3 bg-muted/40 rounded-xl space-y-2"
                           >
                             <p className="text-xs font-semibold">
-                              Rate your experience
+                              Rate your experience with {sitterName}
                             </p>
                             <StarPicker
                               value={reviewRating}
                               onChange={setReviewRating}
                             />
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-foreground">
+                                Tell us more (optional)
+                              </p>
+                              <Textarea
+                                data-ocid="client.review.textarea"
+                                value={reviewText}
+                                onChange={(e) => setReviewText(e.target.value)}
+                                placeholder="Share details about your experience with the sitter and service..."
+                                className="text-sm rounded-xl resize-none"
+                                rows={3}
+                              />
+                            </div>
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
@@ -341,7 +451,10 @@ export default function ClientDashboard({
                                 size="sm"
                                 variant="ghost"
                                 data-ocid="client.review.cancel_button"
-                                onClick={() => setReviewingId(null)}
+                                onClick={() => {
+                                  setReviewingId(null);
+                                  setReviewText("");
+                                }}
                                 className="rounded-full h-7 px-3 text-xs"
                               >
                                 Cancel
