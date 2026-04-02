@@ -347,13 +347,30 @@ actor {
   // Also overwrites any existing #user role — so logging in first and then
   // claiming admin works correctly even after _initializeAccessControlWithSecret
   // pre-registered the caller as #user.
+  // Claim admin access.
+  // Succeeds if:
+  //   (a) no admin has ever been set up, OR
+  //   (b) the caller is not currently an admin (allows re-claim after switching devices/anchors)
+  // This lets the app owner recover admin on mobile or after Internet Identity anchor change.
   public shared ({ caller }) func claimFirstAdmin() : async Bool {
     if (caller.isAnonymous()) { return false };
-    if (accessControlState.adminAssigned) { return false };
-    // Overwrite any existing role (e.g. #user assigned during initialize())
-    accessControlState.userRoles.add(caller, #admin);
-    accessControlState.adminAssigned := true;
-    true;
+    // Allow claim if no admin has been assigned yet
+    if (not accessControlState.adminAssigned) {
+      accessControlState.userRoles.add(caller, #admin);
+      accessControlState.adminAssigned := true;
+      return true;
+    };
+    // Also allow re-claim if caller is NOT currently an admin
+    // (app owner switched device/anchor and lost access)
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) { return false }; // already admin, no-op
+      case (_) {
+        // Caller is not admin — grant them admin (recovers from lost anchor)
+        accessControlState.userRoles.add(caller, #admin);
+        accessControlState.adminAssigned := true;
+        return true;
+      };
+    };
   };
 
   // Returns true if at least one admin has been set up

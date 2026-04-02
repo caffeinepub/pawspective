@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
@@ -107,21 +108,40 @@ const HOW_IT_WORKS = [
 export default function LoginPage({ navigate }: Props) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { data: profile, isLoading: profileLoading } = useCallerProfile();
-  const { data: isAdmin } = useIsAdmin();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const saveProfile = useSaveProfile();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  // Track whether user just completed the save action (triggers redirect)
+  const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setName(profile.name ?? "");
       setEmail(profile.email ?? "");
       setSaved(true);
+      // Returning user: already has profile — auto-redirect once admin status resolves
+      setJustSaved(true);
     }
   }, [profile]);
+
+  const queryClient = useQueryClient();
+
+  // Auto-redirect ONLY after the user explicitly saves (justSaved) and admin status resolved
+  useEffect(() => {
+    if (!justSaved || adminLoading) return;
+    const timer = setTimeout(() => {
+      if (isAdmin) {
+        navigate("admin-dashboard");
+      } else {
+        navigate("sitter-dashboard");
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [justSaved, isAdmin, adminLoading, navigate]);
 
   const handleSave = async () => {
     try {
@@ -131,7 +151,10 @@ export default function LoginPage({ navigate }: Props) {
         role: "user",
       });
       setSaved(true);
-      toast.success("Profile saved!");
+      setJustSaved(true);
+      toast.success("Welcome to Pawspective!");
+      // Refetch admin status so redirect goes to correct dashboard
+      queryClient.invalidateQueries({ queryKey: ["is-admin"] });
     } catch {
       toast.error("Failed to save profile.");
     }
