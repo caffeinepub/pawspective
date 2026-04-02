@@ -12,16 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useQueries } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   CalendarDays,
   Car,
   Check,
-  Clock,
   Copy,
   Home,
   Loader2,
@@ -37,15 +34,9 @@ import {
   X,
 } from "lucide-react";
 import React, { useState } from "react";
-
-/** Strip all non-digit characters, keep only digits */
-function normalizePhone(raw: string): string {
-  return raw.replace(/\D/g, "");
-}
 import { toast } from "sonner";
 import type { View } from "../App";
 import type {
-  AvailabilityEntry,
   DayServiceSchedule,
   Pet,
   Public,
@@ -55,7 +46,6 @@ import type {
 } from "../backend.d";
 import { parseBadges } from "../components/SitterCard";
 import StatusBadge from "../components/StatusBadge";
-import { useActor } from "../hooks/useActor";
 import {
   useActiveSitters,
   useCreateBooking,
@@ -154,61 +144,6 @@ function getDaysRange(startDate: string, endDate: string): string[] {
   return dates;
 }
 
-// Convert "HH:MM" string to minutes since midnight
-function timeStringToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
-
-// Get day-of-week index from an ISO date string (0=Sun...6=Sat)
-function getDayOfWeek(dateStr: string): number {
-  return new Date(`${dateStr}T12:00:00`).getDay();
-}
-
-// Returns the availability entry for a sitter on a given date, or null if unavailable
-function getSitterAvailForDate(
-  sitterId: bigint,
-  dateStr: string,
-  availabilityBySitter: Record<string, AvailabilityEntry[]>,
-): AvailabilityEntry | null {
-  const entries = availabilityBySitter[sitterId.toString()] ?? [];
-  const dow = getDayOfWeek(dateStr);
-  return entries.find((e) => Number(e.dayOfWeek) === dow) ?? null;
-}
-
-// Returns a validation error string or null if valid
-function validateSlotTime(
-  slot: ServiceSlot,
-  dateStr: string,
-  availabilityBySitter: Record<string, AvailabilityEntry[]>,
-): string | null {
-  const avail = getSitterAvailForDate(
-    slot.sitterId,
-    dateStr,
-    availabilityBySitter,
-  );
-  if (!avail) {
-    // Sitter has no availability set for this day -- treat as unknown, don't block
-    return null;
-  }
-  const slotStart = timeStringToMinutes(slot.startTime);
-  const slotEnd = timeStringToMinutes(slot.endTime);
-  const availStart = Number(avail.startTime);
-  const availEnd = Number(avail.endTime);
-
-  if (slotStart < availStart || slotEnd > availEnd) {
-    const fmt = (m: number) => {
-      const h = Math.floor(m / 60);
-      const min = m % 60;
-      const ampm = h >= 12 ? "PM" : "AM";
-      const hh = h > 12 ? h - 12 : h === 0 ? 12 : h;
-      return `${hh}:${min.toString().padStart(2, "0")} ${ampm}`;
-    };
-    return `Available ${fmt(availStart)}–${fmt(availEnd)}`;
-  }
-  return null;
-}
-
 function getSlotCost(slot: ServiceSlot): number {
   const hours = Number(slot.durationMinutes) / 60;
   return hours * Number(slot.ratePerHour);
@@ -229,7 +164,6 @@ interface DaySchedulerProps {
   sitter: Public;
   serviceSchedule: DayServiceSchedule[];
   onScheduleChange: (schedule: DayServiceSchedule[]) => void;
-  availabilityBySitter: Record<string, AvailabilityEntry[]>;
 }
 
 function DayServiceScheduler({
@@ -241,7 +175,6 @@ function DayServiceScheduler({
   sitter,
   serviceSchedule,
   onScheduleChange,
-  availabilityBySitter,
 }: DaySchedulerProps) {
   const days = getDaysRange(startDate, endDate);
 
@@ -341,30 +274,7 @@ function DayServiceScheduler({
               className="border border-border rounded-xl overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b border-border">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold">{label}</p>
-                  {(() => {
-                    const anyAvailable = selectedSitterIds.some(
-                      (id) =>
-                        getSitterAvailForDate(
-                          id,
-                          date,
-                          availabilityBySitter,
-                        ) !== null,
-                    );
-                    const hasAnyAvailData = Object.values(
-                      availabilityBySitter,
-                    ).some((arr) => arr.length > 0);
-                    if (!anyAvailable && hasAnyAvailData) {
-                      return (
-                        <span className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                          <AlertCircle size={10} /> Not available
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
+                <p className="text-sm font-semibold">{label}</p>
                 <button
                   type="button"
                   onClick={() => addSlot(date)}
@@ -379,102 +289,77 @@ function DayServiceScheduler({
                 </p>
               ) : (
                 <div className="divide-y divide-border">
-                  {day.slots.map((slot, slotIdx) => {
-                    const slotError = validateSlotTime(
-                      slot,
-                      date,
-                      availabilityBySitter,
-                    );
-                    return (
-                      <div
-                        key={`${slot.service}-${slot.sitterId ?? ""}-${slotIdx}`}
-                        className="px-4 py-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center"
+                  {day.slots.map((slot, slotIdx) => (
+                    <div
+                      key={`${slot.service}-${slot.sitterId ?? ""}-${slotIdx}`}
+                      className="px-4 py-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-center"
+                    >
+                      <Select
+                        value={slot.service}
+                        onValueChange={(v) =>
+                          updateSlot(date, slotIdx, { service: v })
+                        }
                       >
-                        <Select
-                          value={slot.service}
-                          onValueChange={(v) =>
-                            updateSlot(date, slotIdx, { service: v })
-                          }
-                        >
-                          <SelectTrigger className="rounded-lg h-9 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {servicesToShow.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s}
+                        <SelectTrigger className="rounded-lg h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {servicesToShow.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={slot.sitterId.toString()}
+                        onValueChange={(v) =>
+                          updateSlot(date, slotIdx, { sitterId: BigInt(v) })
+                        }
+                      >
+                        <SelectTrigger className="rounded-lg h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allSitters
+                            .filter((s) => selectedSitterIds.includes(s.id))
+                            .map((s) => (
+                              <SelectItem
+                                key={s.id.toString()}
+                                value={s.id.toString()}
+                              >
+                                {s.name}
                               </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={slot.sitterId.toString()}
-                          onValueChange={(v) =>
-                            updateSlot(date, slotIdx, { sitterId: BigInt(v) })
-                          }
-                        >
-                          <SelectTrigger className="rounded-lg h-9 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allSitters
-                              .filter((s) => selectedSitterIds.includes(s.id))
-                              .map((s) => (
-                                <SelectItem
-                                  key={s.id.toString()}
-                                  value={s.id.toString()}
-                                >
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                            Start
-                          </span>
-                          <input
-                            type="time"
-                            value={slot.startTime}
-                            onChange={(e) =>
-                              updateSlot(date, slotIdx, {
-                                startTime: e.target.value,
-                              })
-                            }
-                            className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9 font-medium focus:outline-none focus:ring-1 focus:ring-ring"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
-                            End
-                          </span>
-                          <input
-                            type="time"
-                            value={slot.endTime}
-                            onChange={(e) =>
-                              updateSlot(date, slotIdx, {
-                                endTime: e.target.value,
-                              })
-                            }
-                            className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9 font-medium focus:outline-none focus:ring-1 focus:ring-ring"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeSlot(date, slotIdx)}
-                          className="text-destructive hover:bg-destructive/10 rounded-full p-1.5"
-                        >
-                          <X size={13} />
-                        </button>
-                        {slotError && (
-                          <div className="col-span-full flex items-center gap-1.5 text-xs text-destructive bg-destructive/10 px-3 py-1.5 rounded-lg">
-                            <AlertCircle size={12} />
-                            {slotError}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        </SelectContent>
+                      </Select>
+                      <input
+                        type="time"
+                        value={slot.startTime}
+                        onChange={(e) =>
+                          updateSlot(date, slotIdx, {
+                            startTime: e.target.value,
+                          })
+                        }
+                        className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9"
+                      />
+                      <input
+                        type="time"
+                        value={slot.endTime}
+                        onChange={(e) =>
+                          updateSlot(date, slotIdx, { endTime: e.target.value })
+                        }
+                        className="border border-input rounded-lg px-2 py-1.5 text-sm bg-background h-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSlot(date, slotIdx)}
+                        className="text-destructive hover:bg-destructive/10 rounded-full p-1.5"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -572,25 +457,6 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const [selectedSitterIds, setSelectedSitterIds] = useState<bigint[]>([
     sitterId,
   ]);
-
-  // Fetch availability for all selected sitters in parallel
-  const { actor, isFetching: isActorFetching } = useActor();
-  const sitterAvailabilityResults = useQueries({
-    queries: selectedSitterIds.map((id) => ({
-      queryKey: ["sitter-availability", id.toString()],
-      queryFn: async () => {
-        if (!actor) return [] as AvailabilityEntry[];
-        return actor.getSitterAvailability(id) as Promise<AvailabilityEntry[]>;
-      },
-      enabled: !!actor && !isActorFetching,
-    })),
-  });
-  const availabilityBySitter: Record<string, AvailabilityEntry[]> = {};
-  selectedSitterIds.forEach((id, idx) => {
-    availabilityBySitter[id.toString()] = (sitterAvailabilityResults[idx]
-      ?.data ?? []) as AvailabilityEntry[];
-  });
-
   // Step 3: Dates
   const [serviceSchedule, setServiceSchedule] = useState<DayServiceSchedule[]>(
     [],
@@ -710,7 +576,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
         pets: mappedPets,
         clientName,
         clientEmail,
-        clientPhone: normalizePhone(clientPhone),
+        clientPhone,
         notes:
           `[Location: ${serviceLocation === "onsite" ? "At My Home" : "Sitter Picks Up"}] ${notes}`.trim(),
         isRecurring,
@@ -728,22 +594,11 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
 
   const validPets = pets.filter((p) => p.petName && p.petType);
 
-  const hasAvailabilityConflict = serviceSchedule.some((day) =>
-    day.slots.some(
-      (slot) => validateSlotTime(slot, day.date, availabilityBySitter) !== null,
-    ),
-  );
-
   const canNext = () => {
     if (step === 1) return selectedServices.length > 0;
-    if (step === 3) return !!startDate && !!endDate && !hasAvailabilityConflict;
+    if (step === 3) return !!startDate && !!endDate;
     if (step === 4) return validPets.length > 0;
-    if (step === 5)
-      return (
-        !!clientName &&
-        !!clientEmail &&
-        normalizePhone(clientPhone).length >= 10
-      );
+    if (step === 5) return !!clientName && !!clientEmail && !!clientPhone;
     return true;
   };
 
@@ -1162,94 +1017,60 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
               {/* Date Range */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Start Date & Time Card */}
-                <div className="rounded-2xl border-2 border-border bg-card shadow-sm overflow-hidden transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:shadow-md">
-                  <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <CalendarDays size={15} className="text-primary" />
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      Start Date
-                    </span>
+                <div className="rounded-2xl border border-border bg-muted/30 p-4 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <CalendarDays size={16} className="text-primary" />
+                    Start Date &amp; Time
                   </div>
-                  <div className="px-4 pb-3">
-                    <DatePicker
-                      value={startDate}
-                      onChange={(iso) => {
-                        setStartDate(iso);
-                        if (endDate && endDate < iso) setEndDate("");
-                        setServiceSchedule([]);
-                      }}
-                      placeholder="Pick start date"
-                      disabled={(d) => d < today}
-                      ocid="booking.start_date.button"
-                    />
-                  </div>
-                  <div className="border-t border-border mx-4" />
-                  <div className="px-4 pt-3 pb-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Clock size={15} className="text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1 font-medium">
-                        Start Time
-                      </p>
-                      <input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full px-3 py-2.5 text-base font-semibold border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        style={{ fontSize: "16px" }}
-                        aria-label="Start time"
-                      />
-                    </div>
-                  </div>
+                  <DatePicker
+                    value={startDate}
+                    onChange={(iso) => {
+                      setStartDate(iso);
+                      if (endDate && endDate < iso) setEndDate("");
+                      setServiceSchedule([]);
+                    }}
+                    placeholder="Pick start date"
+                    disabled={(d) => d < today}
+                    ocid="booking.start_date.button"
+                  />
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    style={{ fontSize: "16px", minHeight: "52px" }}
+                    aria-label="Start time"
+                  />
                 </div>
                 {/* End Date & Time Card */}
-                <div className="rounded-2xl border-2 border-border bg-card shadow-sm overflow-hidden transition-all hover:border-primary/40 focus-within:border-primary/60 focus-within:shadow-md">
-                  <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <CalendarDays size={15} className="text-primary" />
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">
-                      End Date
-                    </span>
+                <div className="rounded-2xl border border-border bg-muted/30 p-4 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <CalendarDays size={16} className="text-primary" />
+                    End Date &amp; Time
                   </div>
-                  <div className="px-4 pb-3">
-                    <DatePicker
-                      value={endDate}
-                      onChange={(iso) => {
-                        setEndDate(iso);
-                        setServiceSchedule([]);
-                      }}
-                      placeholder="Pick end date"
-                      disabled={(d) => {
-                        if (d < today) return true;
-                        if (startDate && d < new Date(`${startDate}T12:00:00`))
-                          return true;
-                        return false;
-                      }}
-                      ocid="booking.end_date.button"
-                    />
-                  </div>
-                  <div className="border-t border-border mx-4" />
-                  <div className="px-4 pt-3 pb-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Clock size={15} className="text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1 font-medium">
-                        End Time
-                      </p>
-                      <input
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="w-full px-3 py-2.5 text-base font-semibold border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        style={{ fontSize: "16px" }}
-                        aria-label="End time"
-                      />
-                    </div>
-                  </div>
+                  <DatePicker
+                    value={endDate}
+                    onChange={(iso) => {
+                      setEndDate(iso);
+                      setServiceSchedule([]);
+                    }}
+                    placeholder="Pick end date"
+                    disabled={(d) => {
+                      if (d < today) return true;
+                      if (startDate && d < new Date(`${startDate}T12:00:00`))
+                        return true;
+                      return false;
+                    }}
+                    ocid="booking.end_date.button"
+                  />
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background text-foreground appearance-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    style={{ fontSize: "16px", minHeight: "52px" }}
+                    aria-label="End time"
+                  />
                 </div>
               </div>
 
@@ -1299,7 +1120,6 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   sitter={sitter}
                   serviceSchedule={serviceSchedule}
                   onScheduleChange={setServiceSchedule}
-                  availabilityBySitter={availabilityBySitter}
                 />
               )}
 
@@ -1597,11 +1417,6 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   placeholder="+1 (555) 000-0000"
                   className="rounded-lg"
                 />
-                {clientPhone && normalizePhone(clientPhone).length < 10 && (
-                  <p className="text-xs text-destructive mt-1">
-                    Enter a valid 10-digit phone number
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -1771,22 +1586,14 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                 {step === 0 ? "Home" : "Back"}
               </Button>
               {step < 6 ? (
-                <div className="flex flex-col items-end gap-1">
-                  <Button
-                    data-ocid="booking.next.button"
-                    onClick={() => setStep((s) => s + 1)}
-                    disabled={!canNext()}
-                    className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Continue <ArrowRight size={16} className="ml-1" />
-                  </Button>
-                  {step === 3 && hasAvailabilityConflict && (
-                    <p className="text-xs text-destructive text-center">
-                      One or more services are outside the sitter's available
-                      hours. Please adjust the times.
-                    </p>
-                  )}
-                </div>
+                <Button
+                  data-ocid="booking.next.button"
+                  onClick={() => setStep((s) => s + 1)}
+                  disabled={!canNext()}
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Continue <ArrowRight size={16} className="ml-1" />
+                </Button>
               ) : (
                 <Button
                   data-ocid="booking.submit_button"

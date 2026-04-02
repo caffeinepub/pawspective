@@ -257,26 +257,65 @@ actor {
     role : Text;
   };
 
+  // ---------------------------------------------------------------------------
+  // Stable storage – survives canister upgrades/redeployments
+  // ---------------------------------------------------------------------------
+  stable var stableSitters        : [(SitterProfile.Id, SitterProfile.Public)]          = [];
+  stable var stableBookings       : [(Booking.Id, Booking.Public)]                      = [];
+  stable var stableAvailabilities : [(SitterProfile.Id, SitterAvailability.Availability)] = [];
+  stable var stableServiceLogs    : [(ServiceLog.Id, ServiceLog.Public)]                = [];
+  stable var stablePayments       : [(Booking.Id, PaymentRecord.Public)]                = [];
+  stable var stableUserProfiles   : [(Principal, UserProfile)]                          = [];
+  // messages stores List internally; we flatten to arrays for stability
+  stable var stableMessages       : [(Booking.Id, [Message.Message])]                   = [];
+  // admin state
+  stable var stableAdminAssigned  : Bool                                                = false;
+  stable var stableUserRoles      : [(Principal, AccessControl.UserRole)]               = [];
+  // counters & config
+  stable var stableNextSitterId      : Nat                              = 1;
+  stable var stableNextBookingId     : Nat                              = 1;
+  stable var stableNextServiceLogId  : Nat                              = 1;
+  stable var stableStripeConfig      : ?Stripe.StripeConfiguration     = null;
+
+  // ---------------------------------------------------------------------------
+  // In-memory working maps (rebuilt from stable vars on every upgrade)
+  // ---------------------------------------------------------------------------
   // State
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  let sitters = Map.empty<SitterProfile.Id, SitterProfile.Public>();
-  let bookings = Map.empty<Booking.Id, Booking.Public>();
+  let sitters        = Map.empty<SitterProfile.Id, SitterProfile.Public>();
+  let bookings       = Map.empty<Booking.Id, Booking.Public>();
   let availabilities = Map.empty<SitterProfile.Id, SitterAvailability.Availability>();
-  let serviceLogs = Map.empty<ServiceLog.Id, ServiceLog.Public>();
-  let messages = Map.empty<Booking.Id, List.List<Message.Message>>();
-  let payments = Map.empty<Booking.Id, PaymentRecord.Public>();
-  let userProfiles = Map.empty<Principal, UserProfile>();
+  let serviceLogs    = Map.empty<ServiceLog.Id, ServiceLog.Public>();
+  let messages       = Map.empty<Booking.Id, List.List<Message.Message>>();
+  let payments       = Map.empty<Booking.Id, PaymentRecord.Public>();
+  let userProfiles   = Map.empty<Principal, UserProfile>();
 
-  // New rate state
+  // New rate state (not persisted separately – embedded in SitterProfile.serviceRates)
   let serviceRates = Map.empty<Nat, Map.Map<Text, Nat>>();
 
-  var nextSitterId = 1;
-  var nextBookingId = 1;
-  var nextServiceLogId = 1;
+  var nextSitterId     = stableNextSitterId;
+  var nextBookingId    = stableNextBookingId;
+  var nextServiceLogId = stableNextServiceLogId;
 
-  var stripeConfig : ?Stripe.StripeConfiguration = null;
+  var stripeConfig : ?Stripe.StripeConfiguration = stableStripeConfig;
+
+  // Restore in-memory maps from stable arrays on (re)deploy
+  for ((k, v) in stableSitters.values())        { sitters.add(k, v)        };
+  for ((k, v) in stableBookings.values())       { bookings.add(k, v)       };
+  for ((k, v) in stableAvailabilities.values()) { availabilities.add(k, v) };
+  for ((k, v) in stableServiceLogs.values())    { serviceLogs.add(k, v)    };
+  for ((k, v) in stablePayments.values())       { payments.add(k, v)       };
+  for ((k, v) in stableUserProfiles.values())   { userProfiles.add(k, v)   };
+  for ((k, arr) in stableMessages.values()) {
+    let lst = List.empty<Message.Message>();
+    for (m in arr.values()) { lst.add(m) };
+    messages.add(k, lst);
+  };
+  // Restore access control
+  accessControlState.adminAssigned := stableAdminAssigned;
+  for ((p, r) in stableUserRoles.values()) { accessControlState.userRoles.add(p, r) };
 
   // Helper: safe admin check that never traps on unregistered principals
   func callerIsAdmin(caller : Principal) : Bool {
@@ -806,4 +845,32 @@ actor {
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
+  // ---------------------------------------------------------------------------
+  // Upgrade hooks – serialize in-memory maps back to stable arrays
+  // ---------------------------------------------------------------------------
+  system func preupgrade() {
+    stableSitters        := sitters.entries().toArray();
+    stableBookings       := bookings.entries().toArray();
+    stableAvailabilities := availabilities.entries().toArray();
+    stableServiceLogs    := serviceLogs.entries().toArray();
+    stablePayments       := payments.entries().toArray();
+    stableUserProfiles   := userProfiles.entries().toArray();
+    let msgBuf = List.empty<(Booking.Id, [Message.Message])>();
+    for ((k, lst) in messages.entries()) {
+      msgBuf.add((k, lst.values().toArray()));
+    };
+    stableMessages := msgBuf.values().toArray();
+    stableAdminAssigned := accessControlState.adminAssigned;
+    stableUserRoles     := accessControlState.userRoles.entries().toArray();
+    stableNextSitterId      := nextSitterId;
+    stableNextBookingId     := nextBookingId;
+    stableNextServiceLogId  := nextServiceLogId;
+    stableStripeConfig      := stripeConfig;
+  };
+
+  system func postupgrade() {
+    // in-memory maps were already rebuilt from stable vars in the actor body above
+  };
+
+
 };

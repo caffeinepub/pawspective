@@ -15,9 +15,7 @@ import {
   Search,
   Shield,
   Sparkles,
-  Star,
   Sun,
-  Users,
 } from "lucide-react";
 import { useState } from "react";
 import type { View } from "../App";
@@ -57,16 +55,6 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
       );
     return matchLoc && matchSvc;
   });
-
-  // Item 7: Social proof stats
-  const activeSitters = (sitters as Public[]).filter((s) => s.isActive);
-  const avgRating =
-    activeSitters.length > 0
-      ? activeSitters
-          .filter((s) => s.rating > 0)
-          .reduce((sum, s) => sum + s.rating, 0) /
-        Math.max(1, activeSitters.filter((s) => s.rating > 0).length)
-      : 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -214,24 +202,6 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
         <section className="border-b border-border bg-card">
           <div className="max-w-6xl mx-auto px-4 py-5">
             <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Users size={16} className="text-primary" />
-                <span>
-                  <strong className="text-foreground font-bold">
-                    {activeSitters.length > 0 ? activeSitters.length : "10+"}
-                  </strong>{" "}
-                  Verified Sitters
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Star size={16} className="text-accent fill-accent" />
-                <span>
-                  <strong className="text-foreground font-bold">
-                    {avgRating > 0 ? avgRating.toFixed(1) : "5.0"}
-                  </strong>{" "}
-                  Avg Rating
-                </span>
-              </div>
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Shield size={16} className="text-primary" />
                 <span>Trusted by pet families</span>

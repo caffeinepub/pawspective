@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Award,
@@ -56,7 +57,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
 import type {
@@ -1028,6 +1029,7 @@ export default function AdminDashboard({
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: adminAssigned } = useIsAdminAssigned();
   const claimAdmin = useClaimFirstAdmin();
+  const queryClient = useQueryClient();
   const { data: sitters = [], isLoading: sittersLoading } = useAllSitters();
   const { data: bookings = [], isLoading: bookingsLoading } = useAllBookings();
   const { data: payments = [] } = useAllPayments();
@@ -1103,38 +1105,44 @@ export default function AdminDashboard({
         <p className="text-muted-foreground text-center max-w-sm">
           {adminAssigned !== true
             ? "No admin has been set up yet. Since you're logged in, you can claim admin access now."
-            : "You don't have admin privileges. Contact an existing admin to be granted access."}
+            : "If you are the app owner, you can reclaim admin access below. This is needed after a fresh deployment."}
         </p>
-        {adminAssigned !== true && (
-          <Button
-            onClick={() =>
-              claimAdmin.mutate(undefined, {
-                onSuccess: (claimed) => {
-                  if (claimed) {
-                    toast.success("Admin access claimed! Reloading...");
-                    setTimeout(() => window.location.reload(), 1000);
-                  } else {
-                    toast.error(
-                      "Admin has already been claimed by someone else.",
-                    );
-                  }
-                },
-                onError: () => toast.error("Failed to claim admin access."),
-              })
-            }
-            disabled={claimAdmin.isPending}
-            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold"
-          >
-            {claimAdmin.isPending ? (
-              <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                Claiming...
-              </>
-            ) : (
-              "Claim Admin Access"
-            )}
-          </Button>
-        )}
+        <Button
+          onClick={() =>
+            claimAdmin.mutate(undefined, {
+              onSuccess: (claimed) => {
+                if (claimed) {
+                  toast.success("Admin access claimed!");
+                  queryClient.invalidateQueries({ queryKey: ["is-admin"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["is-admin-assigned"],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["caller-profile"],
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["all-sitters"] });
+                } else {
+                  toast.error(
+                    "Admin has already been claimed. If this is you, try signing out and back in.",
+                  );
+                }
+              },
+              onError: () =>
+                toast.error("Failed to claim admin access. Please try again."),
+            })
+          }
+          disabled={claimAdmin.isPending}
+          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold"
+        >
+          {claimAdmin.isPending ? (
+            <>
+              <Loader2 size={16} className="mr-2 animate-spin" />
+              Claiming...
+            </>
+          ) : (
+            "Claim Admin Access"
+          )}
+        </Button>
         <Button
           variant="outline"
           onClick={() => navigate("home")}

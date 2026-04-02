@@ -3,13 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Calendar, PawPrint, RefreshCw, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Mail,
+  PawPrint,
+  Phone,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { useState } from "react";
 import type { View } from "../App";
 import type { Public__4 } from "../backend.d";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
-import { useBookingsByEmail } from "../hooks/useQueries";
+import { useBookingsByEmail, useBookingsByPhone } from "../hooks/useQueries";
 
 interface Props {
   navigate: (view: View) => void;
@@ -21,6 +29,10 @@ function formatDate(ts: bigint): string {
     day: "numeric",
     year: "numeric",
   });
+}
+/** Strip all non-digit characters, keep only digits */
+function normalizePhone(raw: string): string {
+  return raw.replace(/\D/g, "");
 }
 
 function getStatusKey(status: unknown): string {
@@ -126,12 +138,29 @@ function BookingActivityCard({ booking }: { booking: Public__4 }) {
 }
 
 export default function BookingLookupPage({ navigate }: Props) {
+  const [lookupMode, setLookupMode] = useState<"email" | "phone">("email");
   const [emailInput, setEmailInput] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
-  const { data: bookings = [], isLoading } = useBookingsByEmail(submittedEmail);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [submittedPhone, setSubmittedPhone] = useState("");
+
+  const { data: emailBookings = [], isLoading: emailLoading } =
+    useBookingsByEmail(submittedEmail);
+  const { data: phoneBookings = [], isLoading: phoneLoading } =
+    useBookingsByPhone(submittedPhone);
+
+  const bookings = lookupMode === "email" ? emailBookings : phoneBookings;
+  const isLoading = lookupMode === "email" ? emailLoading : phoneLoading;
+  const submittedIdentifier =
+    lookupMode === "email" ? submittedEmail : submittedPhone;
 
   const handleSearch = () => {
-    if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
+    if (lookupMode === "email") {
+      if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
+    } else {
+      const normalized = normalizePhone(phoneInput.trim());
+      if (normalized.length >= 10) setSubmittedPhone(normalized);
+    }
   };
 
   return (
@@ -159,14 +188,51 @@ export default function BookingLookupPage({ navigate }: Props) {
             Find Your Bookings
           </h1>
           <p className="text-muted-foreground mt-2">
-            Enter the email you used to book and see all your reservations.
+            Enter the email or phone number you used when booking.
           </p>
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-xs p-6 mb-8">
-          <div className="space-y-3">
-            <Label htmlFor="lookup-email">Email Address</Label>
-            <div className="flex gap-2">
+          {/* Email / Phone toggle */}
+          <div className="flex gap-2 mb-5">
+            <button
+              type="button"
+              data-ocid="lookup.toggle_email"
+              onClick={() => setLookupMode("email")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors border ${
+                lookupMode === "email"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent border-border text-foreground hover:bg-muted"
+              }`}
+            >
+              <Mail size={15} />
+              Email Address
+            </button>
+            <button
+              type="button"
+              data-ocid="lookup.toggle_phone"
+              onClick={() => setLookupMode("phone")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors border ${
+                lookupMode === "phone"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent border-border text-foreground hover:bg-muted"
+              }`}
+            >
+              <Phone size={15} />
+              Phone Number
+            </button>
+          </div>
+
+          <Label
+            htmlFor={lookupMode === "email" ? "lookup-email" : "lookup-phone"}
+            className="block mb-2"
+          >
+            {lookupMode === "email"
+              ? "Your Email Address"
+              : "Your Phone Number"}
+          </Label>
+          <div className="flex gap-2">
+            {lookupMode === "email" ? (
               <Input
                 data-ocid="lookup.email.input"
                 id="lookup-email"
@@ -177,15 +243,37 @@ export default function BookingLookupPage({ navigate }: Props) {
                 className="rounded-full"
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <Button
-                data-ocid="lookup.search.button"
-                onClick={handleSearch}
-                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 font-semibold"
-              >
-                <Search size={16} className="mr-1.5" /> Search
-              </Button>
-            </div>
+            ) : (
+              <Input
+                data-ocid="lookup.phone.input"
+                id="lookup-phone"
+                type="tel"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="(555) 123-4567"
+                className="rounded-full"
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+            )}
+            <Button
+              data-ocid="lookup.search.button"
+              onClick={handleSearch}
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 font-semibold"
+            >
+              <Search size={16} className="mr-1.5" /> Search
+            </Button>
           </div>
+          {lookupMode === "phone" &&
+            phoneInput &&
+            normalizePhone(phoneInput).length < 10 && (
+              <p className="text-xs text-destructive mt-2">
+                Enter a valid 10-digit phone number
+              </p>
+            )}
+          <p className="text-xs text-muted-foreground mt-3">
+            We use your contact info to keep you updated on your pet&apos;s care
+            and to reach you if needed.
+          </p>
         </div>
 
         {isLoading && (
@@ -196,14 +284,16 @@ export default function BookingLookupPage({ navigate }: Props) {
           </div>
         )}
 
-        {!isLoading && submittedEmail && bookings.length === 0 && (
+        {!isLoading && submittedIdentifier && bookings.length === 0 && (
           <div data-ocid="lookup.empty_state" className="text-center py-16">
-            <div className="text-4xl mb-3">🔍</div>
+            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-5">
+              <PawPrint size={36} className="text-primary" />
+            </div>
             <h3 className="font-display font-semibold text-lg">
               No bookings found
             </h3>
             <p className="text-muted-foreground mt-1">
-              No bookings found for <strong>{submittedEmail}</strong>
+              No bookings found for <strong>{submittedIdentifier}</strong>
             </p>
           </div>
         )}
