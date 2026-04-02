@@ -675,7 +675,8 @@ function AnalyticsTab({
   );
 }
 
-function AdminAvailabilityTab({ sitters }: { sitters: Public[] }) {
+function AdminAvailabilityTab() {
+  const { data: sitters = [], isLoading } = useAllSitters();
   const [selectedSitterId, setSelectedSitterId] = useState<string>("");
   const sitterId = selectedSitterId ? BigInt(selectedSitterId) : null;
   const { data: existingEntries = [] } = useSitterAvailability(sitterId);
@@ -684,6 +685,13 @@ function AdminAvailabilityTab({ sitters }: { sitters: Public[] }) {
   const [schedule, setSchedule] = useState<
     Array<{ enabled: boolean; startTime: string; endTime: string }>
   >(DAYS.map(() => ({ enabled: false, startTime: "09:00", endTime: "17:00" })));
+
+  // Auto-select first sitter when only one exists or on initial load
+  useEffect(() => {
+    if (!selectedSitterId && sitters.length > 0) {
+      setSelectedSitterId(sitters[0].id.toString());
+    }
+  }, [sitters, selectedSitterId]);
 
   useEffect(() => {
     const reset = DAYS.map(() => ({
@@ -729,119 +737,160 @@ function AdminAvailabilityTab({ sitters }: { sitters: Public[] }) {
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-xs p-6 space-y-5">
-      <h3 className="font-display font-semibold text-lg">
-        Sitter Availability
-      </h3>
-      <div className="space-y-2">
-        <Label>Select Sitter</Label>
-        <Select value={selectedSitterId} onValueChange={setSelectedSitterId}>
-          <SelectTrigger
-            data-ocid="admin.availability.select"
-            className="rounded-lg max-w-xs"
-          >
-            <SelectValue placeholder="Choose a sitter..." />
-          </SelectTrigger>
-          <SelectContent>
-            {sitters.map((s) => (
-              <SelectItem key={s.id.toString()} value={s.id.toString()}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div>
+        <h3 className="font-display font-semibold text-lg">
+          Sitter Availability Management
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Set working hours for each sitter. Clients can only book within these
+          windows.
+        </p>
       </div>
 
-      {!selectedSitterId && sitters.length > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-muted/40 rounded-xl border border-border text-sm text-muted-foreground">
-          <CalendarDays
-            size={20}
-            className="shrink-0 text-primary opacity-70"
-          />
-          <span>
-            Select a sitter from the dropdown above to view and edit their
-            weekly availability schedule.
-          </span>
-        </div>
-      )}
-
-      {sitters.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
-          <CalendarDays size={32} className="opacity-30" />
-          <p className="text-sm font-medium">No sitters yet</p>
-          <p className="text-xs">
-            Add a sitter in the Sitters tab first, then manage their
-            availability here.
-          </p>
-        </div>
-      )}
-
-      {selectedSitterId && (
+      {/* Loading skeleton */}
+      {isLoading && (
         <div className="space-y-3">
-          {DAYS.map((day, idx) => (
-            <div
-              key={day}
-              className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl"
-            >
-              <Switch
-                checked={schedule[idx].enabled}
-                onCheckedChange={(v) =>
-                  setSchedule((prev) =>
-                    prev.map((d, i) => (i === idx ? { ...d, enabled: v } : d)),
-                  )
-                }
-              />
-              <span className="w-8 text-sm font-medium">{day}</span>
-              {schedule[idx].enabled ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <input
-                    type="time"
-                    value={schedule[idx].startTime}
-                    onChange={(e) =>
-                      setSchedule((prev) =>
-                        prev.map((d, i) =>
-                          i === idx ? { ...d, startTime: e.target.value } : d,
-                        ),
-                      )
-                    }
-                    className="border border-border rounded-lg px-2 py-1 text-sm bg-background"
-                  />
-                  <span className="text-muted-foreground text-sm">to</span>
-                  <input
-                    type="time"
-                    value={schedule[idx].endTime}
-                    onChange={(e) =>
-                      setSchedule((prev) =>
-                        prev.map((d, i) =>
-                          i === idx ? { ...d, endTime: e.target.value } : d,
-                        ),
-                      )
-                    }
-                    className="border border-border rounded-lg px-2 py-1 text-sm bg-background"
-                  />
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground flex-1">
-                  Not available
-                </span>
-              )}
-            </div>
-          ))}
+          <Skeleton className="h-5 w-36 rounded" />
+          <Skeleton className="h-10 w-64 rounded-lg" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
+      )}
+
+      {/* Empty state — no sitters */}
+      {!isLoading && sitters.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-14 text-center gap-4">
+          <CalendarDays size={40} className="text-primary opacity-50" />
+          <div className="space-y-1">
+            <p className="font-semibold text-base">No Sitters Added Yet</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Go to the Sitters tab to add your first sitter, then return here
+              to set their availability.
+            </p>
+          </div>
           <Button
-            data-ocid="admin.availability.save_button"
-            onClick={handleSave}
-            disabled={setAvailabilityMut.isPending}
-            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+            data-ocid="admin.availability.go_to_sitters_button"
+            variant="outline"
+            className="rounded-full mt-2"
+            onClick={() => toast.info("Switch to the Sitters tab above")}
           >
-            {setAvailabilityMut.isPending ? (
-              <>
-                <Loader2 size={14} className="mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Availability"
-            )}
+            Go to Sitters Tab
           </Button>
         </div>
+      )}
+
+      {/* Sitter dropdown — always visible once sitters are loaded */}
+      {!isLoading && sitters.length > 0 && (
+        <>
+          <div className="space-y-2">
+            <Label>Select a Sitter to Edit</Label>
+            <Select
+              value={selectedSitterId}
+              onValueChange={setSelectedSitterId}
+            >
+              <SelectTrigger
+                data-ocid="admin.availability.select"
+                className="rounded-lg max-w-xs"
+              >
+                <SelectValue placeholder="Choose a sitter..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sitters.map((s) => (
+                  <SelectItem key={s.id.toString()} value={s.id.toString()}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!selectedSitterId && (
+            <div className="flex items-center gap-3 p-4 bg-muted/40 rounded-xl border border-border text-sm text-muted-foreground">
+              <CalendarDays
+                size={20}
+                className="shrink-0 text-primary opacity-70"
+              />
+              <span>
+                Select a sitter from the dropdown above to view and edit their
+                weekly availability schedule.
+              </span>
+            </div>
+          )}
+
+          {selectedSitterId && (
+            <div className="space-y-3">
+              {DAYS.map((day, idx) => (
+                <div
+                  key={day}
+                  className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl"
+                >
+                  <Switch
+                    checked={schedule[idx].enabled}
+                    onCheckedChange={(v) =>
+                      setSchedule((prev) =>
+                        prev.map((d, i) =>
+                          i === idx ? { ...d, enabled: v } : d,
+                        ),
+                      )
+                    }
+                  />
+                  <span className="w-8 text-sm font-medium">{day}</span>
+                  {schedule[idx].enabled ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="time"
+                        value={schedule[idx].startTime}
+                        onChange={(e) =>
+                          setSchedule((prev) =>
+                            prev.map((d, i) =>
+                              i === idx
+                                ? { ...d, startTime: e.target.value }
+                                : d,
+                            ),
+                          )
+                        }
+                        className="border border-border rounded-lg px-2 py-1 text-sm bg-background"
+                      />
+                      <span className="text-muted-foreground text-sm">to</span>
+                      <input
+                        type="time"
+                        value={schedule[idx].endTime}
+                        onChange={(e) =>
+                          setSchedule((prev) =>
+                            prev.map((d, i) =>
+                              i === idx ? { ...d, endTime: e.target.value } : d,
+                            ),
+                          )
+                        }
+                        className="border border-border rounded-lg px-2 py-1 text-sm bg-background"
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground flex-1">
+                      Not available
+                    </span>
+                  )}
+                </div>
+              ))}
+              <Button
+                data-ocid="admin.availability.save_button"
+                onClick={handleSave}
+                disabled={setAvailabilityMut.isPending}
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+              >
+                {setAvailabilityMut.isPending ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Availability"
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1803,21 +1852,9 @@ export default function AdminDashboard({
             </div>
           </TabsContent>
 
-          {/* Availability - Item 1: show skeleton while sitters are loading */}
+          {/* Availability */}
           <TabsContent value="availability">
-            {sittersLoading ? (
-              <div className="bg-card rounded-2xl border border-border shadow-xs p-6 space-y-4">
-                <Skeleton className="h-6 w-40 rounded" />
-                <Skeleton className="h-10 w-64 rounded-lg" />
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full rounded-xl" />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <AdminAvailabilityTab sitters={allSitters} />
-            )}
+            <AdminAvailabilityTab />
           </TabsContent>
 
           {/* Access */}
