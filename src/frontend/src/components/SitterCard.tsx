@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, ShieldCheck, Star, Trophy } from "lucide-react";
 import type { View } from "../App";
 import type { Public } from "../backend.d";
 
@@ -16,6 +16,42 @@ const cardGradients = [
   "from-emerald-500 to-teal-700",
 ];
 
+// Item 6: parse badges from bio field
+function parseBadges(bio: string): { badges: string[]; cleanBio: string } {
+  const match = bio.match(/^\[badges:([^\]]*)\]/);
+  if (!match) return { badges: [], cleanBio: bio };
+  return {
+    badges: match[1]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    cleanBio: bio.slice(match[0].length).trim(),
+  };
+}
+
+const BADGE_CONFIG: Record<
+  string,
+  { label: string; icon: typeof ShieldCheck; color: string }
+> = {
+  "Background Checked": {
+    label: "Background Checked",
+    icon: ShieldCheck,
+    color: "text-emerald-600 bg-emerald-50",
+  },
+  "5+ Years Experience": {
+    label: "5+ Years Exp",
+    icon: Trophy,
+    color: "text-blue-600 bg-blue-50",
+  },
+  "Top Sitter": {
+    label: "Top Sitter",
+    icon: Star,
+    color: "text-amber-600 bg-amber-50",
+  },
+};
+
+export { parseBadges };
+
 export default function SitterCard({
   sitter,
   navigate,
@@ -23,6 +59,8 @@ export default function SitterCard({
 }: SitterCardProps) {
   const grad = cardGradients[index % cardGradients.length];
   const extraServices = sitter.services.length - 3;
+  const { badges } = parseBadges(sitter.bio ?? "");
+  const displayBadges = badges.slice(0, 2);
 
   return (
     <button
@@ -93,7 +131,7 @@ export default function SitterCard({
         </div>
 
         {/* Services */}
-        <div className="flex flex-wrap gap-1 mb-4">
+        <div className="flex flex-wrap gap-1 mb-3">
           {sitter.services.slice(0, 3).map((s) => (
             <span
               key={s}
@@ -108,6 +146,26 @@ export default function SitterCard({
             </span>
           )}
         </div>
+
+        {/* Item 6: Badge chips */}
+        {displayBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {displayBadges.map((badge) => {
+              const cfg = BADGE_CONFIG[badge];
+              if (!cfg) return null;
+              const Icon = cfg.icon;
+              return (
+                <span
+                  key={badge}
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.color}`}
+                >
+                  <Icon size={9} />
+                  {cfg.label}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         <Button
           data-ocid={`sitters.item.${index + 1}.button`}

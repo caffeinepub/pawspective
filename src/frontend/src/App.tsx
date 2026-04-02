@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MobileNav from "./components/MobileNav";
 import AdminDashboard from "./pages/AdminDashboard";
 import BookingLookupPage from "./pages/BookingLookupPage";
@@ -24,6 +24,13 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>("home");
   const [selectedSitterId, setSelectedSitterId] = useState<bigint | null>(null);
   const [clientEmail, setClientEmail] = useState<string>("");
+  // Item 11: dark mode state
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Item 11: sync dark class to <html>
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
 
   const navigate = (view: View, sitterId?: bigint, email?: string) => {
     if (sitterId !== undefined) setSelectedSitterId(sitterId);
@@ -34,7 +41,13 @@ export default function App() {
 
   return (
     <>
-      {currentView === "home" && <HomePage navigate={navigate} />}
+      {currentView === "home" && (
+        <HomePage
+          navigate={navigate}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+      )}
       {currentView === "sitter-detail" && selectedSitterId !== null && (
         <SitterDetailPage sitterId={selectedSitterId} navigate={navigate} />
       )}
@@ -45,10 +58,18 @@ export default function App() {
         <ClientDashboard navigate={navigate} initialEmail={clientEmail} />
       )}
       {currentView === "sitter-dashboard" && (
-        <SitterDashboard navigate={navigate} />
+        <SitterDashboard
+          navigate={navigate}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
       )}
       {currentView === "admin-dashboard" && (
-        <AdminDashboard navigate={navigate} />
+        <AdminDashboard
+          navigate={navigate}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
       )}
       {currentView === "sitter-apply" && (
         <SitterApplicationPage navigate={navigate} />

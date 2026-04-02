@@ -53,6 +53,42 @@
     --sidebar-ring: 0.45 0.16 255;
   }
 
+  /* Item 11: Dark mode OKLCH tokens */
+  .dark {
+    --background: 0.13 0.02 265;
+    --foreground: 0.97 0.008 75;
+    --card: 0.18 0.03 265;
+    --card-foreground: 0.97 0.008 75;
+    --popover: 0.18 0.03 265;
+    --popover-foreground: 0.97 0.008 75;
+    --primary: 0.58 0.18 255;
+    --primary-foreground: 0.99 0 0;
+    --secondary: 0.25 0.04 265;
+    --secondary-foreground: 0.8 0.01 255;
+    --muted: 0.22 0.03 265;
+    --muted-foreground: 0.6 0.02 75;
+    --accent: 0.72 0.18 55;
+    --accent-foreground: 0.15 0.02 55;
+    --destructive: 0.55 0.22 27;
+    --destructive-foreground: 0.99 0 0;
+    --border: 0.28 0.04 265;
+    --input: 0.28 0.04 265;
+    --ring: 0.58 0.18 255;
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.15 0.025 265;
+    --sidebar-foreground: 0.97 0.008 75;
+    --sidebar-primary: 0.58 0.18 255;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.25 0.04 265;
+    --sidebar-accent-foreground: 0.8 0.01 255;
+    --sidebar-border: 0.28 0.04 265;
+    --sidebar-ring: 0.58 0.18 255;
+  }
+
   * {
     @apply border-border;
   }

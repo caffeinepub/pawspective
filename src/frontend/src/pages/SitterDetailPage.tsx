@@ -19,14 +19,17 @@ import {
   CalendarDays,
   Car,
   Check,
+  Copy,
   Home,
   Loader2,
   MapPin,
   PawPrint,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Star,
   Trash2,
+  Trophy,
   Users,
   X,
 } from "lucide-react";
@@ -41,11 +44,14 @@ import type {
   RecurrencePattern,
   ServiceSlot,
 } from "../backend.d";
+import { parseBadges } from "../components/SitterCard";
 import StatusBadge from "../components/StatusBadge";
 import {
   useActiveSitters,
   useCreateBooking,
+  useSitterAvailability,
   useSitterProfile,
+  useSitterServiceRates,
 } from "../hooks/useQueries";
 
 interface Props {
@@ -436,6 +442,9 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const { data: sitter, isLoading } = useSitterProfile(sitterId);
   const { data: allSitters = [] } = useActiveSitters();
   const createBooking = useCreateBooking();
+  // Items 3, 6: sitter detail portfolio hooks
+  const { data: serviceRates = [] } = useSitterServiceRates(sitterId);
+  const { data: availabilityEntries = [] } = useSitterAvailability(sitterId);
 
   const [step, setStep] = useState(0);
   const [confirmedBooking, setConfirmedBooking] = useState<Public__4 | null>(
@@ -660,43 +669,46 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
         )}
 
         <div className="bg-card rounded-2xl border border-border shadow-xs p-6 md:p-8">
-          {/* Step 0: Sitter profile */}
+          {/* Step 0: Sitter Portfolio (Items 3, 6) */}
           {step === 0 && (
-            <div className="space-y-5">
-              <h2 className="font-display text-2xl font-bold">
-                Meet Your Sitter
-              </h2>
-              <div className="flex gap-5 items-start">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
-                  {sitter.photoUrl ? (
-                    <img
-                      src={sitter.photoUrl}
-                      alt={sitter.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary to-violet-700 flex items-center justify-center">
-                      <span className="text-3xl font-bold text-white font-display">
-                        {sitter.name[0]}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-display text-xl font-bold text-foreground">
+            <div className="space-y-6">
+              {/* Hero photo */}
+              <div className="relative h-56 rounded-xl overflow-hidden -mx-2">
+                {sitter.photoUrl ? (
+                  <img
+                    src={sitter.photoUrl}
+                    alt={sitter.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary to-violet-700 flex items-center justify-center">
+                    <span className="text-6xl font-bold text-white/80 font-display">
+                      {sitter.name[0]}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h2 className="font-display text-2xl font-bold text-white">
                     {sitter.name}
-                  </h3>
+                  </h2>
                   {sitter.location && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                    <div className="flex items-center gap-1 text-white/80 text-sm mt-0.5">
                       <MapPin size={12} />
                       {sitter.location}
                     </div>
                   )}
-                  <div className="flex items-center gap-1 mt-1">
+                </div>
+              </div>
+
+              {/* Rating + rate row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star
                         key={i}
-                        size={13}
+                        size={15}
                         className={
                           i <= Math.round(sitter.rating)
                             ? "fill-accent text-accent"
@@ -704,34 +716,132 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                         }
                       />
                     ))}
-                    <span className="text-sm text-muted-foreground ml-1">
-                      ({Number(sitter.reviewCount)})
-                    </span>
                   </div>
-                  <p className="font-display font-bold text-2xl mt-2">
-                    ${Number(sitter.hourlyRate)}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      /day
-                    </span>
-                  </p>
+                  <span className="text-sm text-muted-foreground">
+                    {sitter.rating > 0 ? sitter.rating.toFixed(1) : "New"}
+                    {Number(sitter.reviewCount) > 0 &&
+                      ` (${Number(sitter.reviewCount)} reviews)`}
+                  </span>
                 </div>
+                <p className="font-display font-bold text-xl text-primary">
+                  ${Number(sitter.hourlyRate)}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    /hr
+                  </span>
+                </p>
               </div>
+
+              {/* Item 6: Verification badges */}
+              {(() => {
+                const { badges } = parseBadges(sitter.bio ?? "");
+                if (badges.length === 0) return null;
+                const BADGE_CONFIG: Record<
+                  string,
+                  { icon: typeof ShieldCheck; color: string }
+                > = {
+                  "Background Checked": {
+                    icon: ShieldCheck,
+                    color: "text-emerald-600 bg-emerald-50 border-emerald-200",
+                  },
+                  "5+ Years Experience": {
+                    icon: Trophy,
+                    color: "text-blue-600 bg-blue-50 border-blue-200",
+                  },
+                  "Top Sitter": {
+                    icon: Star,
+                    color: "text-amber-600 bg-amber-50 border-amber-200",
+                  },
+                };
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {badges.map((badge) => {
+                      const cfg = BADGE_CONFIG[badge];
+                      if (!cfg) return null;
+                      const Icon = cfg.icon;
+                      return (
+                        <span
+                          key={badge}
+                          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${cfg.color}`}
+                        >
+                          <Icon size={12} />
+                          {badge}
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Bio */}
               <p className="text-muted-foreground leading-relaxed">
-                {sitter.bio ||
+                {parseBadges(sitter.bio ?? "").cleanBio ||
                   "Passionate pet lover ready to care for your furry family."}
               </p>
+
+              {/* Services with rates */}
               <div>
                 <p className="text-sm font-semibold mb-2">Services offered</p>
                 <div className="flex flex-wrap gap-2">
-                  {sitter.services.map((s) => (
-                    <span
-                      key={s}
-                      className="px-3 py-1 rounded-full text-sm bg-secondary text-secondary-foreground border border-primary/20"
-                    >
-                      {s}
-                    </span>
-                  ))}
+                  {sitter.services.map((s) => {
+                    const rate = (
+                      serviceRates as Array<{
+                        service: string;
+                        ratePerHour: bigint;
+                      }>
+                    ).find((r) => r.service === s);
+                    return (
+                      <span
+                        key={s}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-secondary text-secondary-foreground border border-primary/20"
+                      >
+                        {s}
+                        {rate && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ${Number(rate.ratePerHour)}/hr
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Availability summary */}
+              {(availabilityEntries as Array<{ dayOfWeek: bigint }>).length >
+                0 && (
+                <div>
+                  <p className="text-sm font-semibold mb-2">Available days</p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                      (day, i) => {
+                        const hasDay = (
+                          availabilityEntries as Array<{ dayOfWeek: bigint }>
+                        ).some((e) => Number(e.dayOfWeek) === i);
+                        return (
+                          <span
+                            key={day}
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${hasDay ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                          >
+                            {day}
+                          </span>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA */}
+              <div className="pt-2 border-t border-border">
+                <button
+                  type="button"
+                  data-ocid="booking.book_now.button"
+                  onClick={() => setStep(1)}
+                  className="w-full py-3.5 rounded-xl font-bold text-base text-accent-foreground transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "oklch(0.72 0.18 55)" }}
+                >
+                  Book Now — ${Number(sitter.hourlyRate)}/hr
+                </button>
               </div>
             </div>
           )}
@@ -1357,31 +1467,91 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
             </div>
           )}
 
-          {/* Step 7: Success */}
+          {/* Step 7: Success (Item 8) */}
           {step === 7 && confirmedBooking && (
             <div
               data-ocid="booking.success_state"
               className="text-center space-y-5 py-4"
             >
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-                <Check size={28} className="text-emerald-600" />
+              {/* Animated checkmark */}
+              <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto animate-bounce">
+                <Check size={36} className="text-emerald-600" />
               </div>
-              <h2 className="font-display text-2xl font-bold">
-                Booking Confirmed!
-              </h2>
-              <p className="text-muted-foreground">
-                Your booking has been submitted. Use your email to track the
-                status anytime.
-              </p>
-              <div className="bg-muted/40 rounded-xl p-4">
-                <p className="text-xs text-muted-foreground">Booking ID</p>
-                <p className="font-display font-bold text-2xl text-primary mt-0.5">
-                  #{confirmedBooking.id.toString()}
+              <div>
+                <h2 className="font-display text-2xl font-bold">
+                  Booking Confirmed!
+                </h2>
+                {sitter && confirmedBooking.clientName && (
+                  <p className="text-muted-foreground mt-1">
+                    {sitter.name} is all set for {confirmedBooking.clientName}!
+                  </p>
+                )}
+              </div>
+
+              {/* Sitter summary */}
+              {sitter && (
+                <div className="flex items-center gap-3 bg-muted/30 rounded-xl p-3 text-left mx-auto max-w-xs">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
+                    {sitter.photoUrl ? (
+                      <img
+                        src={sitter.photoUrl}
+                        alt={sitter.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-violet-700 flex items-center justify-center">
+                        <span className="text-lg font-bold text-white">
+                          {sitter.name[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{sitter.name}</p>
+                    <p className="text-xs text-muted-foreground">Your sitter</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Booking ID with copy button */}
+              <div className="bg-muted/40 rounded-xl p-4 relative">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Booking Reference
                 </p>
+                <div className="flex items-center justify-center gap-2">
+                  <p className="font-display font-bold text-3xl text-primary">
+                    #{confirmedBooking.id.toString()}
+                  </p>
+                  <button
+                    type="button"
+                    data-ocid="confirmation.copy.button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        confirmedBooking.id.toString(),
+                      );
+                      toast.success("Booking ID copied!");
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Copy booking ID"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
                 <div className="mt-2">
                   <StatusBadge status={confirmedBooking.status as string} />
                 </div>
+                {confirmedBooking.pets && confirmedBooking.pets.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Pets:{" "}
+                    {confirmedBooking.pets.map((p) => p.petName).join(", ")}
+                  </p>
+                )}
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                Save your Booking ID to track your booking status anytime.
+              </p>
+
               <div className="flex gap-3 justify-center flex-wrap">
                 <Button
                   data-ocid="confirmation.home.button"

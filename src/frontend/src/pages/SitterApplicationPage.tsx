@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   ArrowRight,
+  Calendar,
   CheckCircle2,
   Clock,
   Dog,
@@ -15,6 +16,7 @@ import {
   Heart,
   Lock,
   PawPrint,
+  Share2,
   Shield,
   Sparkles,
   Star,
@@ -137,6 +139,7 @@ export default function SitterApplicationPage({ navigate }: Props) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedName, setSubmittedName] = useState("");
 
   const principal = identity?.getPrincipal();
   const myProfile = principal
@@ -186,6 +189,7 @@ export default function SitterApplicationPage({ navigate }: Props) {
         services: form.services,
         hourlyRate: BigInt(Math.round(Number(form.hourlyRate) * 100)),
       });
+      setSubmittedName(form.name);
       setSubmitted(true);
     } catch {
       // error is surfaced via createSitter.isError
@@ -318,9 +322,16 @@ export default function SitterApplicationPage({ navigate }: Props) {
     );
   }
 
-  // --- HAS PROFILE: show status ---
-  if (myProfile || submitted) {
+  // --- Item 12: Enhanced Success Screen (submitted or already has profile) ---
+  if (submitted || myProfile) {
     const isApproved = myProfile?.isActive ?? false;
+    const displayName = submittedName || myProfile?.name || "you";
+    const appDate = new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
     return (
       <div
         className="min-h-screen flex flex-col"
@@ -344,63 +355,165 @@ export default function SitterApplicationPage({ navigate }: Props) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="w-full max-w-md text-center"
+            className="w-full max-w-md space-y-5"
           >
-            <div
-              className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-6 ${
-                isApproved ? "bg-emerald-500/20" : "bg-amber-500/20"
-              }`}
-            >
-              {isApproved ? (
-                <CheckCircle2 size={40} className="text-emerald-400" />
-              ) : (
-                <Clock size={40} className="text-amber-400" />
-              )}
+            {/* Animated checkmark */}
+            <div className="text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{
+                  type: "spring",
+                  damping: 10,
+                  stiffness: 200,
+                  delay: 0.1,
+                }}
+                className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+                  isApproved ? "bg-emerald-500/20" : "bg-emerald-500/20"
+                }`}
+              >
+                <CheckCircle2 size={44} className="text-emerald-400" />
+              </motion.div>
+
+              <Badge
+                data-ocid="sitter-apply.success_state"
+                className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-sm font-bold px-4 py-1.5 mb-4"
+              >
+                {isApproved ? "✓ Approved!" : "✓ Application Submitted!"}
+              </Badge>
+
+              <h2 className="font-display text-3xl font-bold text-white mb-2">
+                {isApproved
+                  ? `Welcome, ${displayName}!`
+                  : "Application Received!"}
+              </h2>
+              <p className="text-white/70 text-sm leading-relaxed">
+                {isApproved
+                  ? "Congratulations! Your profile is live. Clients can now discover and book you."
+                  : "Your application is under review. You'll be notified once approved."}
+              </p>
             </div>
 
-            <Badge
-              data-ocid="sitter-apply.success_state"
-              className={`text-sm font-bold px-4 py-1.5 mb-4 ${
-                isApproved
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                  : "bg-amber-500/20 text-amber-300 border-amber-500/30"
-              }`}
-            >
-              {isApproved ? "✓ Approved!" : "⏳ Under Review"}
-            </Badge>
+            {/* Item 12: Next steps checklist */}
+            {!isApproved && (
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+                <CardContent className="p-5 space-y-3">
+                  <p className="text-white/80 text-sm font-semibold">
+                    What happens next:
+                  </p>
+                  {[
+                    {
+                      icon: CheckCircle2,
+                      label: "Application received",
+                      done: true,
+                      color: "text-emerald-400",
+                    },
+                    {
+                      icon: Clock,
+                      label: "Admin review (1–3 business days)",
+                      done: false,
+                      color: "text-amber-400",
+                    },
+                    {
+                      icon: PawPrint,
+                      label: "Check status via your Sitter Portal",
+                      done: false,
+                      color: "text-white/50",
+                    },
+                    {
+                      icon: Star,
+                      label: "Once approved, you'll appear in search",
+                      done: false,
+                      color: "text-white/50",
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="flex items-center gap-3">
+                        <Icon size={16} className={item.color} />
+                        <span
+                          className={`text-sm ${item.done ? "text-emerald-300 font-medium" : "text-white/70"}`}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
 
-            <h2 className="font-display text-3xl font-bold text-white mb-3">
-              {isApproved ? "Welcome to Pawspective!" : "Application Received!"}
-            </h2>
-            <p className="text-white/70 mb-8 leading-relaxed">
-              {isApproved
-                ? "Congratulations! Your profile is live. Clients can now discover and book you through Pawspective."
-                : "Your application is being reviewed by our admin team. We'll notify you once approved — usually within 1–2 business days."}
-            </p>
+            {/* Item 12: Shareable candidate card */}
+            {!isApproved && (
+              <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                      Candidate Card
+                    </p>
+                    <Share2 size={13} className="text-white/30" />
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/30 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg font-display">
+                        {displayName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-display font-bold text-white text-base">
+                        {displayName}
+                      </p>
+                      <p className="text-white/50 text-xs">
+                        Pawspective Sitter Candidate
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-white/40 text-xs">
+                    <Calendar size={12} />
+                    <span>Applied {appDate}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-            {isApproved ? (
-              <Button
-                data-ocid="sitter-apply.primary_button"
-                className="rounded-full px-8 py-6 font-bold text-base"
-                style={{
-                  backgroundColor: "oklch(0.72 0.18 55)",
-                  color: "#1a1a2e",
-                }}
-                onClick={() => navigate("sitter-dashboard")}
-              >
-                Go to My Dashboard
-                <ArrowRight size={16} className="ml-2" />
-              </Button>
-            ) : (
+            {/* Action buttons */}
+            <div className="flex flex-col gap-3">
+              {isApproved ? (
+                <Button
+                  data-ocid="sitter-apply.primary_button"
+                  className="rounded-full px-8 py-6 font-bold text-base"
+                  style={{
+                    backgroundColor: "oklch(0.72 0.18 55)",
+                    color: "#1a1a2e",
+                  }}
+                  onClick={() => navigate("sitter-dashboard")}
+                >
+                  Go to My Dashboard
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  data-ocid="sitter-apply.primary_button"
+                  className="w-full rounded-full py-6 font-bold text-base"
+                  style={{
+                    backgroundColor: "oklch(0.72 0.18 55)",
+                    color: "#1a1a2e",
+                  }}
+                  onClick={() => navigate("login")}
+                >
+                  <PawPrint size={16} className="mr-2" />
+                  Go to Sitter Portal
+                </Button>
+              )}
               <Button
                 data-ocid="sitter-apply.secondary_button"
                 variant="outline"
-                className="rounded-full px-8 py-6 font-semibold border-white/30 text-white bg-white/10 hover:bg-white/20"
+                className="w-full rounded-full py-5 font-semibold border-white/30 text-white bg-white/10 hover:bg-white/20"
                 onClick={() => navigate("home")}
               >
-                Check Back Later
+                Back to Home
               </Button>
-            )}
+            </div>
           </motion.div>
         </main>
       </div>
@@ -581,7 +694,7 @@ export default function SitterApplicationPage({ navigate }: Props) {
                                 : "bg-white/5 text-white/70 border-white/20 hover:bg-white/10"
                             }`}
                           >
-                            {val === "yes" ? "🐾 Yes!" : "Not right now"}
+                            {val === "yes" ? "Yes!" : "Not right now"}
                           </button>
                         ))}
                       </div>

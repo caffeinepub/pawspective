@@ -10,11 +10,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircle,
+  Moon,
   PawPrint,
   Search,
   Shield,
   Sparkles,
   Star,
+  Sun,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import type { View } from "../App";
@@ -22,11 +25,23 @@ import type { Public } from "../backend.d";
 import SitterCard from "../components/SitterCard";
 import { useActiveSitters } from "../hooks/useQueries";
 
+// Item 7: Popular service chips
+const POPULAR_SERVICES = [
+  { label: "Dog Walking", filter: "dog walking" },
+  { label: "Cat Sitting", filter: "cat sitting" },
+  { label: "Overnight Stay", filter: "overnight" },
+  { label: "Drop-In Visit", filter: "drop-in" },
+  { label: "Dog Boarding", filter: "boarding" },
+  { label: "Playtime", filter: "playtime" },
+];
+
 interface Props {
   navigate: (view: View, sitterId?: bigint) => void;
+  darkMode?: boolean;
+  setDarkMode?: (v: boolean) => void;
 }
 
-export default function HomePage({ navigate }: Props) {
+export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
   const { data: sitters = [], isLoading } = useActiveSitters();
   const [locationFilter, setLocationFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -42,6 +57,16 @@ export default function HomePage({ navigate }: Props) {
       );
     return matchLoc && matchSvc;
   });
+
+  // Item 7: Social proof stats
+  const activeSitters = (sitters as Public[]).filter((s) => s.isActive);
+  const avgRating =
+    activeSitters.length > 0
+      ? activeSitters
+          .filter((s) => s.rating > 0)
+          .reduce((sum, s) => sum + s.rating, 0) /
+        Math.max(1, activeSitters.filter((s) => s.rating > 0).length)
+      : 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -93,17 +118,31 @@ export default function HomePage({ navigate }: Props) {
               Become a Sitter
             </button>
           </nav>
-          <Button
-            onClick={() =>
-              document
-                .getElementById("sitters-section")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm px-5"
-            size="sm"
-          >
-            Get Started
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Item 11: Dark mode toggle */}
+            {setDarkMode && (
+              <button
+                type="button"
+                data-ocid="nav.dark_mode.toggle"
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={darkMode ? "Light mode" : "Dark mode"}
+              >
+                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            )}
+            <Button
+              onClick={() =>
+                document
+                  .getElementById("sitters-section")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm px-5"
+              size="sm"
+            >
+              Get Started
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -171,30 +210,82 @@ export default function HomePage({ navigate }: Props) {
           </div>
         </section>
 
-        {/* TRUST BAR */}
+        {/* Item 7: Social proof bar — dynamic stats from real sitter data */}
         <section className="border-b border-border bg-card">
           <div className="max-w-6xl mx-auto px-4 py-5">
             <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-              {[
-                { icon: Shield, label: "Verified Sitters" },
-                { icon: Star, label: "5-Star Rated" },
-                { icon: CheckCircle, label: "Flexible Scheduling" },
-                { icon: PawPrint, label: "All Pet Types" },
-              ].map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
-                >
-                  <Icon size={16} className="text-primary" />
-                  {label}
-                </div>
-              ))}
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Users size={16} className="text-primary" />
+                <span>
+                  <strong className="text-foreground font-bold">
+                    {activeSitters.length > 0 ? activeSitters.length : "10+"}
+                  </strong>{" "}
+                  Verified Sitters
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Star size={16} className="text-accent fill-accent" />
+                <span>
+                  <strong className="text-foreground font-bold">
+                    {avgRating > 0 ? avgRating.toFixed(1) : "5.0"}
+                  </strong>{" "}
+                  Avg Rating
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Shield size={16} className="text-primary" />
+                <span>Trusted by pet families</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <CheckCircle size={16} className="text-primary" />
+                <span>Flexible Scheduling</span>
+              </div>
             </div>
           </div>
         </section>
 
+        {/* Item 7: Popular Services quick-select */}
+        <section className="max-w-6xl mx-auto px-4 pt-10 pb-2">
+          <h2 className="font-display text-lg font-bold text-foreground mb-4">
+            Popular Services
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-ocid="services.filter.tab"
+              onClick={() => setServiceFilter("all")}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                serviceFilter === "all"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary"
+              }`}
+            >
+              All Services
+            </button>
+            {POPULAR_SERVICES.map((svc) => (
+              <button
+                key={svc.filter}
+                type="button"
+                data-ocid={`services.${svc.filter.replace(/[^a-z0-9]/g, "_")}.tab`}
+                onClick={() =>
+                  setServiceFilter(
+                    serviceFilter === svc.filter ? "all" : svc.filter,
+                  )
+                }
+                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                  serviceFilter === svc.filter
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary"
+                }`}
+              >
+                {svc.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* SITTERS GRID */}
-        <section id="sitters-section" className="max-w-6xl mx-auto px-4 py-14">
+        <section id="sitters-section" className="max-w-6xl mx-auto px-4 py-10">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
             <div>
               <h2 className="font-display text-3xl font-bold text-foreground">
@@ -297,10 +388,10 @@ export default function HomePage({ navigate }: Props) {
           )}
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="bg-secondary/30 py-16">
+        {/* HOW IT WORKS - condensed 3-icon row below grid */}
+        <section className="bg-secondary/30 py-14">
           <div className="max-w-6xl mx-auto px-4">
-            <h2 className="font-display text-3xl font-bold text-center mb-12">
+            <h2 className="font-display text-3xl font-bold text-center mb-10">
               How It Works
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

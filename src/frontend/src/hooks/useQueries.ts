@@ -440,8 +440,10 @@ export function useConfirmManualPayment() {
   });
 }
 
+// Item 2: invalidate sitter queries on review success so ratings update live
 export function useSubmitReview() {
   const { actor } = useActor();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
       sitterId,
@@ -452,6 +454,12 @@ export function useSubmitReview() {
     }) => {
       if (!actor) throw new Error("Actor not ready");
       return actor.submitReview(sitterId, rating);
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["active-sitters"] });
+      qc.invalidateQueries({
+        queryKey: ["sitter", vars.sitterId.toString()],
+      });
     },
   });
 }

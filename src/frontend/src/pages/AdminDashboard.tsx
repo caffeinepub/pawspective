@@ -10,6 +10,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
+  Award,
   BarChart3,
   BookOpen,
   CalendarDays,
@@ -38,9 +44,11 @@ import {
   FileText,
   Fingerprint,
   Loader2,
+  Moon,
   PawPrint,
   Plus,
   ShieldCheck,
+  Sun,
   Trash2,
   UserCheck,
   UserPlus,
@@ -59,6 +67,7 @@ import type {
   Public__4,
 } from "../backend.d";
 import { PaymentStatus } from "../backend.d";
+import { parseBadges } from "../components/SitterCard";
 import StatusBadge from "../components/StatusBadge";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -116,6 +125,8 @@ function formatDate(ts: bigint): string {
 
 interface Props {
   navigate: (view: View) => void;
+  darkMode?: boolean;
+  setDarkMode?: (v: boolean) => void;
 }
 
 function AddSitterDialog({ onClose }: { onClose: () => void }) {
@@ -242,6 +253,75 @@ function AddSitterDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Item 6: Admin badge editor - toggle badges in sitter bio
+const ALL_BADGES = ["Background Checked", "5+ Years Experience", "Top Sitter"];
+
+function AdminBadgeEditor({ sitter }: { sitter: Public }) {
+  const updateSitterMut = useUpdateSitter();
+  const { badges, cleanBio } = parseBadges(sitter.bio ?? "");
+  const [localBadges, setLocalBadges] = useState<string[]>(badges);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const badgePrefix =
+      localBadges.length > 0 ? `[badges:${localBadges.join(",")}]` : "";
+    const newBio = badgePrefix
+      ? `${badgePrefix}${cleanBio ? ` ${cleanBio}` : ""}`
+      : cleanBio;
+    try {
+      await updateSitterMut.mutateAsync({
+        id: sitter.id,
+        name: sitter.name,
+        bio: newBio,
+        location: sitter.location,
+        photoUrl: sitter.photoUrl,
+        services: sitter.services,
+        hourlyRate: sitter.hourlyRate,
+        isActive: sitter.isActive,
+      });
+      toast.success("Badges updated!");
+    } catch {
+      toast.error("Failed to update badges");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="p-3 space-y-2 min-w-[200px]">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        Badges
+      </p>
+      {ALL_BADGES.map((badge) => (
+        <label
+          key={badge}
+          htmlFor={`badge-${sitter.id}-${badge}`}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Checkbox
+            id={`badge-${sitter.id}-${badge}`}
+            checked={localBadges.includes(badge)}
+            onCheckedChange={(checked) =>
+              setLocalBadges((prev) =>
+                checked ? [...prev, badge] : prev.filter((b) => b !== badge),
+              )
+            }
+          />
+          <span className="text-sm">{badge}</span>
+        </label>
+      ))}
+      <Button
+        size="sm"
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full mt-1 rounded-full bg-primary text-primary-foreground h-7 text-xs"
+      >
+        {saving ? "Saving..." : "Save Badges"}
+      </Button>
+    </div>
+  );
+}
+
 function AnalyticsTab({
   bookings,
   sitters,
@@ -251,35 +331,121 @@ function AnalyticsTab({
   sitters: Public[];
   payments: Public__3[];
 }) {
-  const totalRevenue = payments
+  // Item 9: date range filter state
+  const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">(
+    "all",
+  );
+
+  const cutoff = (() => {
+    if (dateRange === "all") return 0;
+    const days = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90;
+    return Date.now() - days * 86400000;
+  })();
+
+  const filteredBookings =
+    dateRange === "all"
+      ? bookings
+      : bookings.filter((b) => Number(b.createdAt / 1_000_000n) >= cutoff);
+
+  const filteredPayments =
+    dateRange === "all"
+      ? payments
+      : payments.filter((p) => {
+          const booking = bookings.find((b) => b.id === p.bookingId);
+          return booking
+            ? Number(booking.createdAt / 1_000_000n) >= cutoff
+            : false;
+        });
+
+  const totalRevenue = filteredPayments
     .filter((p) => p.status === PaymentStatus.paid)
     .reduce((sum, p) => sum + Number(p.totalAmount), 0);
-  const pendingRevenue = payments
+  const pendingRevenue = filteredPayments
     .filter((p) => p.status === PaymentStatus.pending)
     .reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
+  // Item 9: avg booking value
+  const avgBookingValue =
+    filteredPayments.length > 0
+      ? filteredPayments.reduce((sum, p) => sum + Number(p.totalAmount), 0) /
+        filteredPayments.length
+      : 0;
+
   const statusCounts = {
-    pending: bookings.filter((b) => (b.status as string) === "pending").length,
-    confirmed: bookings.filter((b) => (b.status as string) === "confirmed")
+    pending: filteredBookings.filter((b) => (b.status as string) === "pending")
       .length,
-    completed: bookings.filter((b) => (b.status as string) === "completed")
-      .length,
-    cancelled: bookings.filter((b) => (b.status as string) === "cancelled")
-      .length,
+    confirmed: filteredBookings.filter(
+      (b) => (b.status as string) === "confirmed",
+    ).length,
+    completed: filteredBookings.filter(
+      (b) => (b.status as string) === "completed",
+    ).length,
+    cancelled: filteredBookings.filter(
+      (b) => (b.status as string) === "cancelled",
+    ).length,
   };
   const maxCount = Math.max(...Object.values(statusCounts), 1);
 
-  const sitterBookingCounts = sitters
-    .map((s) => ({
-      name: s.name,
-      count: bookings.filter((b) => b.sitterIds?.includes(s.id)).length,
-    }))
+  // Item 9: top sitters with booking count AND revenue
+  const sitterStats = sitters
+    .map((s) => {
+      const sitterBookings = filteredBookings.filter((b) =>
+        b.sitterIds?.includes(s.id),
+      );
+      const sitterPayments = filteredPayments.filter((p) =>
+        sitterBookings.some((b) => b.id === p.bookingId),
+      );
+      const revenue = sitterPayments.reduce(
+        (sum, p) => sum + Number(p.totalAmount),
+        0,
+      );
+      return { name: s.name, count: sitterBookings.length, revenue };
+    })
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  const recentBookings = [...bookings]
+  const recentBookings = [...filteredBookings]
     .sort((a, b) => Number(b.createdAt - a.createdAt))
     .slice(0, 5);
+
+  // Item 9: repeat clients
+  const emailCounts: Record<string, number> = {};
+  for (const b of filteredBookings) {
+    if (b.clientEmail)
+      emailCounts[b.clientEmail] = (emailCounts[b.clientEmail] || 0) + 1;
+  }
+  const repeatClients = Object.values(emailCounts).filter((c) => c >= 2).length;
+
+  // Item 9: weekly booking trend (last 8 weeks)
+  const weeklyData: Array<{ label: string; count: number }> = [];
+  const now = Date.now();
+  for (let w = 7; w >= 0; w--) {
+    const weekStart = now - (w + 1) * 7 * 86400000;
+    const weekEnd = now - w * 7 * 86400000;
+    const label = new Date(weekStart).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const count = bookings.filter((b) => {
+      const ts = Number(b.createdAt / 1_000_000n);
+      return ts >= weekStart && ts < weekEnd;
+    }).length;
+    weeklyData.push({ label, count });
+  }
+  const maxWeekCount = Math.max(...weeklyData.map((w) => w.count), 1);
+
+  // Item 9: peak day of week
+  const dayCounts: Record<number, number> = {};
+  for (const b of filteredBookings) {
+    const day = new Date(Number(b.createdAt / 1_000_000n)).getDay();
+    dayCounts[day] = (dayCounts[day] || 0) + 1;
+  }
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const peakDayNum = Object.entries(dayCounts).sort(
+    (a, b) => b[1] - a[1],
+  )[0]?.[0];
+  const peakDay =
+    peakDayNum !== undefined ? dayNames[Number(peakDayNum)] : "N/A";
 
   const STAT_COLORS: Record<string, string> = {
     pending: "bg-amber-500",
@@ -290,6 +456,30 @@ function AnalyticsTab({
 
   return (
     <div className="space-y-6">
+      {/* Item 9: Date range filter */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h3 className="font-display font-semibold text-lg">Analytics</h3>
+        <div className="flex gap-1.5">
+          {(["7d", "30d", "90d", "all"] as const).map((range) => (
+            <button
+              key={range}
+              type="button"
+              onClick={() => setDateRange(range)}
+              data-ocid={`admin.analytics.${range}.tab`}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${dateRange === range ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              {range === "all"
+                ? "All Time"
+                : range === "7d"
+                  ? "7 Days"
+                  : range === "30d"
+                    ? "30 Days"
+                    : "90 Days"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -309,7 +499,7 @@ function AnalyticsTab({
           },
           {
             label: "Total Bookings",
-            value: bookings.length,
+            value: filteredBookings.length,
             Icon: FileText,
             color: "text-blue-600",
             bg: "bg-blue-50",
@@ -339,6 +529,61 @@ function AnalyticsTab({
         ))}
       </div>
 
+      {/* Item 9: Extra metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground mb-1">
+            Avg Booking Value
+          </p>
+          <p className="font-display font-bold text-xl text-foreground">
+            ${avgBookingValue > 0 ? avgBookingValue.toFixed(0) : "—"}
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground mb-1">Repeat Clients</p>
+          <p className="font-display font-bold text-xl text-foreground">
+            {repeatClients}
+          </p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground mb-1">Peak Day</p>
+          <p className="font-display font-bold text-xl text-foreground">
+            {peakDay}
+          </p>
+        </div>
+      </div>
+
+      {/* Item 9: Weekly booking trend */}
+      <div className="bg-card rounded-xl border border-border p-5">
+        <h3 className="font-display font-semibold text-base mb-4">
+          Weekly Booking Trend
+        </h3>
+        <div className="flex items-end gap-1 h-28">
+          {weeklyData.map((week) => (
+            <div
+              key={week.label}
+              className="flex-1 flex flex-col items-center gap-1"
+            >
+              <span className="text-[9px] text-muted-foreground font-bold">
+                {week.count > 0 ? week.count : ""}
+              </span>
+              <div
+                className="w-full bg-muted rounded-t-sm overflow-hidden"
+                style={{ height: "80px" }}
+              >
+                <div
+                  className="w-full bg-primary rounded-t-sm transition-all"
+                  style={{ height: `${(week.count / maxWeekCount) * 100}%` }}
+                />
+              </div>
+              <span className="text-[8px] text-muted-foreground truncate w-full text-center">
+                {week.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Booking status chart */}
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="font-display font-semibold text-base mb-4">
@@ -365,26 +610,33 @@ function AnalyticsTab({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Top sitters */}
+        {/* Item 9: Top sitters with revenue */}
         <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="font-display font-semibold text-base mb-4">
-            Top Sitters by Bookings
+            Top Sitters
           </h3>
-          {sitterBookingCounts.length === 0 ? (
+          {sitterStats.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No data yet
             </p>
           ) : (
-            <div className="space-y-2">
-              {sitterBookingCounts.map((s, i) => (
-                <div key={s.name} className="flex items-center gap-3">
-                  <span className="w-5 text-xs font-bold text-muted-foreground">
+            <div className="space-y-2.5">
+              {sitterStats.map((s, i) => (
+                <div key={s.name} className="flex items-center gap-2">
+                  <span className="w-5 text-xs font-bold text-muted-foreground shrink-0">
                     {i + 1}.
                   </span>
-                  <span className="flex-1 text-sm font-medium">{s.name}</span>
-                  <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full font-medium">
-                    {s.count}
+                  <span className="flex-1 text-sm font-medium truncate">
+                    {s.name}
                   </span>
+                  <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full font-medium shrink-0">
+                    {s.count} bookings
+                  </span>
+                  {s.revenue > 0 && (
+                    <span className="text-xs text-emerald-600 font-medium shrink-0">
+                      ${s.revenue.toFixed(0)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -752,7 +1004,11 @@ function CreatePaymentDialog({
   );
 }
 
-export default function AdminDashboard({ navigate }: Props) {
+export default function AdminDashboard({
+  navigate,
+  darkMode,
+  setDarkMode,
+}: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: adminAssigned } = useIsAdminAssigned();
@@ -898,8 +1154,21 @@ export default function AdminDashboard({ navigate }: Props) {
             <span className="text-muted-foreground">/</span>
             <span className="font-display font-semibold">Admin Panel</span>
           </div>
-          <div className="flex items-center gap-2 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
-            <ShieldCheck size={12} /> Admin
+          <div className="flex items-center gap-2">
+            {setDarkMode && (
+              <button
+                type="button"
+                data-ocid="nav.dark_mode.toggle"
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={darkMode ? "Light mode" : "Dark mode"}
+              >
+                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+            )}
+            <div className="flex items-center gap-2 text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
+              <ShieldCheck size={12} /> Admin
+            </div>
           </div>
         </div>
       </header>
@@ -1216,6 +1485,25 @@ export default function AdminDashboard({ navigate }: Props) {
                                 </>
                               )}
                             </Button>
+                            {/* Item 6: Badge editor */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                  data-ocid={`admin.sitters.badge_button.${i + 1}`}
+                                >
+                                  <Award size={12} /> Badges
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-auto p-0"
+                                align="end"
+                              >
+                                <AdminBadgeEditor sitter={s} />
+                              </PopoverContent>
+                            </Popover>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1488,9 +1776,21 @@ export default function AdminDashboard({ navigate }: Props) {
             </div>
           </TabsContent>
 
-          {/* Availability */}
+          {/* Availability - Item 1: show skeleton while sitters are loading */}
           <TabsContent value="availability">
-            <AdminAvailabilityTab sitters={allSitters} />
+            {sittersLoading ? (
+              <div className="bg-card rounded-2xl border border-border shadow-xs p-6 space-y-4">
+                <Skeleton className="h-6 w-40 rounded" />
+                <Skeleton className="h-10 w-64 rounded-lg" />
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <AdminAvailabilityTab sitters={allSitters} />
+            )}
           </TabsContent>
 
           {/* Access */}

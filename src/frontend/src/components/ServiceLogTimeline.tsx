@@ -14,8 +14,9 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  Radio,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Public__2 } from "../backend.d";
 import { ServiceStatus } from "../backend.d";
@@ -75,12 +76,30 @@ export default function ServiceLogTimeline({
   isActive,
   autoRefresh,
 }: Props) {
-  const { data: logs = [] } = useServiceLogs(bookingId, autoRefresh);
+  const { data: logs = [], dataUpdatedAt } = useServiceLogs(
+    bookingId,
+    autoRefresh,
+  );
   const postLog = usePostServiceLog();
   const updateStopTime = useUpdateServiceLogStopTime();
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string>("inProgress");
   const [updateNotes, setUpdateNotes] = useState("");
+  // Item 5: last-updated display
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
+
+  useEffect(() => {
+    if (!autoRefresh || !dataUpdatedAt) return;
+    const update = () => {
+      const secs = Math.round((Date.now() - dataUpdatedAt) / 1000);
+      if (secs < 5) setLastUpdatedLabel("just now");
+      else if (secs < 60) setLastUpdatedLabel(`${secs}s ago`);
+      else setLastUpdatedLabel(`${Math.floor(secs / 60)}m ago`);
+    };
+    update();
+    const interval = setInterval(update, 10000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, dataUpdatedAt]);
 
   const activeLog = (logs as Public__2[]).find(
     (l) =>
@@ -144,9 +163,28 @@ export default function ServiceLogTimeline({
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-        Service Log
-      </p>
+      {/* Item 5: Header with pulsing live indicator */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Service Log
+          </p>
+          {autoRefresh && (
+            <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              Live
+            </span>
+          )}
+        </div>
+        {autoRefresh && lastUpdatedLabel && (
+          <span className="text-[10px] text-muted-foreground">
+            Updated {lastUpdatedLabel}
+          </span>
+        )}
+      </div>
 
       {isActive && (
         <div className="flex flex-wrap gap-2 mb-3">
@@ -241,46 +279,53 @@ export default function ServiceLogTimeline({
           No activity logged yet.
         </p>
       ) : (
-        <div className="space-y-2">
-          {[...(logs as Public__2[])].reverse().map((log) => {
-            const cfg =
-              STATUS_CONFIG[log.status as string] ?? STATUS_CONFIG.inProgress;
-            return (
-              <div key={log.id.toString()} className="flex gap-2.5 text-xs">
+        // Item 5: Timeline with connector lines
+        <div className="relative">
+          <div className="absolute left-3 top-3 bottom-3 w-px bg-border" />
+          <div className="space-y-3">
+            {[...(logs as Public__2[])].reverse().map((log) => {
+              const cfg =
+                STATUS_CONFIG[log.status as string] ?? STATUS_CONFIG.inProgress;
+              return (
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${cfg.color}`}
+                  key={log.id.toString()}
+                  className="flex gap-3 text-xs transition-all duration-300"
                 >
-                  {cfg.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span
-                      className={`font-semibold px-1.5 py-0.5 rounded-full text-xs ${cfg.color}`}
-                    >
-                      {cfg.label}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatTs(log.createdAt)}
-                    </span>
-                    {log.startTime && log.stopTime && (
-                      <span className="text-muted-foreground">
-                        ·{" "}
-                        {Math.round(
-                          Number(
-                            (log.stopTime - log.startTime) / 60_000_000_000n,
-                          ),
-                        )}{" "}
-                        min
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 z-10 ${cfg.color}`}
+                  >
+                    {cfg.icon}
+                  </div>
+                  <div className="flex-1 min-w-0 pb-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`font-semibold px-1.5 py-0.5 rounded-full text-xs ${cfg.color}`}
+                      >
+                        {cfg.label}
                       </span>
+                      <span className="text-muted-foreground">
+                        {formatTs(log.createdAt)}
+                      </span>
+                      {log.startTime && log.stopTime && (
+                        <span className="text-muted-foreground">
+                          ·{" "}
+                          {Math.round(
+                            Number(
+                              (log.stopTime - log.startTime) / 60_000_000_000n,
+                            ),
+                          )}{" "}
+                          min
+                        </span>
+                      )}
+                    </div>
+                    {log.notes && (
+                      <p className="mt-0.5 text-foreground">{log.notes}</p>
                     )}
                   </div>
-                  {log.notes && (
-                    <p className="mt-0.5 text-foreground">{log.notes}</p>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -17,10 +17,12 @@ import {
   ArrowLeft,
   Clock,
   Loader2,
+  Moon,
   PawPrint,
   Receipt,
   Save,
   ShieldCheck,
+  Sun,
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -346,9 +348,15 @@ function AdminClaimSection({
 
 interface Props {
   navigate: (view: View) => void;
+  darkMode?: boolean;
+  setDarkMode?: (v: boolean) => void;
 }
 
-export default function SitterDashboard({ navigate }: Props) {
+export default function SitterDashboard({
+  navigate,
+  darkMode,
+  setDarkMode,
+}: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { data: profile, isLoading: profileLoading } = useCallerProfile();
   const { data: allSitters = [] } = useAllSitters();
@@ -507,11 +515,24 @@ export default function SitterDashboard({ navigate }: Props) {
             <span className="text-muted-foreground">/</span>
             <span className="font-display font-semibold">Sitter Dashboard</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-            <User size={12} />
-            <span className="hidden sm:inline">
-              {principal?.slice(0, 12)}...
-            </span>
+          <div className="flex items-center gap-2">
+            {setDarkMode && (
+              <button
+                type="button"
+                data-ocid="nav.dark_mode.toggle"
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={darkMode ? "Light mode" : "Dark mode"}
+              >
+                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+              <User size={12} />
+              <span className="hidden sm:inline">
+                {principal?.slice(0, 12)}...
+              </span>
+            </div>
           </div>
         </div>
       </header>
