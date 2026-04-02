@@ -13,14 +13,16 @@ import {
   Search,
   Star,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
-import type { Public, Public__4 } from "../backend.d";
+import type { Public, Public__3, Public__4 } from "../backend.d";
+import { PaymentStatus } from "../backend.d";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
 import {
   useActiveSitters,
+  useAllPayments,
   useBookingsByEmail,
   useBookingsByPhone,
   useSubmitReview,
@@ -80,6 +82,10 @@ function StarPicker({
   );
 }
 
+function normalizePhone(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
 export default function ClientDashboard({
   navigate,
   initialEmail = "",
@@ -93,13 +99,27 @@ export default function ClientDashboard({
     useBookingsByEmail(submittedEmail);
   const { data: phoneBookings = [], isLoading: phoneLoading } =
     useBookingsByPhone(submittedPhone);
-  const bookings = lookupMode === "email" ? emailBookings : phoneBookings;
   const isLoading = lookupMode === "email" ? emailLoading : phoneLoading;
   const submittedIdentifier =
     lookupMode === "email" ? submittedEmail : submittedPhone;
   // Load sitters to show names/avatars
   const { data: allSittersRaw = [] } = useActiveSitters();
   const allSitters = allSittersRaw as Public[];
+  const { data: allPaymentsRaw = [] } = useAllPayments();
+  const allPayments = allPaymentsRaw as Public__3[];
+  const paymentMap = useMemo(() => {
+    const m = new Map<string, Public__3>();
+    for (const p of allPayments) m.set(p.bookingId.toString(), p);
+    return m;
+  }, [allPayments]);
+
+  // Sort bookings descending by startDate
+  const sortedBookings = useMemo(() => {
+    const raw = (
+      lookupMode === "email" ? emailBookings : phoneBookings
+    ) as Public__4[];
+    return [...raw].sort((a, b) => Number(b.startDate - a.startDate));
+  }, [lookupMode, emailBookings, phoneBookings]);
 
   // Track reviewed booking IDs and active review state
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
@@ -112,7 +132,9 @@ export default function ClientDashboard({
     if (lookupMode === "email") {
       if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
     } else {
-      if (phoneInput.trim()) setSubmittedPhone(phoneInput.trim());
+      const normalized = normalizePhone(phoneInput.trim());
+      if (normalized.length >= 10) setSubmittedPhone(normalized);
+      else if (phoneInput.trim()) setSubmittedPhone(normalized);
     }
   };
 
@@ -168,9 +190,9 @@ export default function ClientDashboard({
             <span className="text-muted-foreground">/</span>
             <span className="font-display font-semibold">My Bookings</span>
           </div>
-          {bookings.length > 0 &&
+          {sortedBookings.length > 0 &&
             (() => {
-              const clientName = (bookings as Public__4[])[0]?.clientName ?? "";
+              const clientName = sortedBookings[0]?.clientName ?? "";
               if (!clientName) return null;
               return (
                 <div className="flex items-center gap-2 text-sm font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full">
@@ -275,7 +297,7 @@ export default function ClientDashboard({
           </div>
         )}
 
-        {!isLoading && submittedIdentifier && bookings.length === 0 && (
+        {!isLoading && submittedIdentifier && sortedBookings.length === 0 && (
           <div data-ocid="client.empty_state" className="text-center py-16">
             <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-5">
               <PawPrint size={36} className="text-primary" />
@@ -295,12 +317,13 @@ export default function ClientDashboard({
           </div>
         )}
 
-        {!isLoading && bookings.length > 0 && (
+        {!isLoading && sortedBookings.length > 0 && (
           <div className="space-y-4">
             <p className="font-semibold">
-              {bookings.length} booking{bookings.length !== 1 ? "s" : ""}
+              {sortedBookings.length} booking
+              {sortedBookings.length !== 1 ? "s" : ""}
             </p>
-            {(bookings as Public__4[]).map((b) => {
+            {sortedBookings.map((b) => {
               const statusKey = getStatusKey(b.status);
               const borderClass =
                 statusBorderColor[statusKey] ?? "border-l-border";
@@ -313,6 +336,8 @@ export default function ClientDashboard({
                 b.sitterIds && b.sitterIds.length > 0
                   ? getSitterName(b.sitterIds[0])
                   : "your sitter";
+              const payment = paymentMap.get(bookingIdStr) ?? null;
+              const isPaid = payment?.status === PaymentStatus.paid;
 
               return (
                 <div
@@ -328,6 +353,17 @@ export default function ClientDashboard({
                           #{bookingIdStr}
                         </span>
                         <StatusBadge status={b.status} />
+                        {payment && (
+                          <span
+                            className={
+                              isPaid
+                                ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                                : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                            }
+                          >
+                            {isPaid ? "✓ Paid" : "⏳ Unpaid"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-1.5">
                         <Button

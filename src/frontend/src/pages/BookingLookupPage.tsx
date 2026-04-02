@@ -12,12 +12,17 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { View } from "../App";
-import type { Public__4 } from "../backend.d";
+import type { Public__3, Public__4 } from "../backend.d";
+import { PaymentStatus } from "../backend.d";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
-import { useBookingsByEmail, useBookingsByPhone } from "../hooks/useQueries";
+import {
+  useAllPayments,
+  useBookingsByEmail,
+  useBookingsByPhone,
+} from "../hooks/useQueries";
 
 interface Props {
   navigate: (view: View) => void;
@@ -52,9 +57,13 @@ const PET_EMOJIS: Record<string, string> = {
   Other: "🐾",
 };
 
-function BookingActivityCard({ booking }: { booking: Public__4 }) {
+function BookingActivityCard({
+  booking,
+  payment,
+}: { booking: Public__4; payment: Public__3 | null }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = getStatusKey(booking.status) === "confirmed";
+  const isPaid = payment?.status === PaymentStatus.paid;
 
   const petsLabel =
     booking.pets?.length > 0
@@ -73,6 +82,17 @@ function BookingActivityCard({ booking }: { booking: Public__4 }) {
                 #{booking.id.toString()}
               </span>
               <StatusBadge status={booking.status} />
+              {payment && (
+                <span
+                  className={
+                    isPaid
+                      ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                      : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                  }
+                >
+                  {isPaid ? "✓ Paid" : "⏳ Unpaid"}
+                </span>
+              )}
               {booking.isRecurring && (
                 <Badge
                   variant="outline"
@@ -149,7 +169,20 @@ export default function BookingLookupPage({ navigate }: Props) {
   const { data: phoneBookings = [], isLoading: phoneLoading } =
     useBookingsByPhone(submittedPhone);
 
-  const bookings = lookupMode === "email" ? emailBookings : phoneBookings;
+  const { data: allPaymentsRaw = [] } = useAllPayments();
+  const allPayments = allPaymentsRaw as Public__3[];
+  const paymentMap = useMemo(() => {
+    const m = new Map<string, Public__3>();
+    for (const p of allPayments) m.set(p.bookingId.toString(), p);
+    return m;
+  }, [allPayments]);
+
+  const rawBookings = (
+    lookupMode === "email" ? emailBookings : phoneBookings
+  ) as Public__4[];
+  const sortedBookings = useMemo(() => {
+    return [...rawBookings].sort((a, b) => Number(b.startDate - a.startDate));
+  }, [rawBookings]);
   const isLoading = lookupMode === "email" ? emailLoading : phoneLoading;
   const submittedIdentifier =
     lookupMode === "email" ? submittedEmail : submittedPhone;
@@ -284,7 +317,7 @@ export default function BookingLookupPage({ navigate }: Props) {
           </div>
         )}
 
-        {!isLoading && submittedIdentifier && bookings.length === 0 && (
+        {!isLoading && submittedIdentifier && sortedBookings.length === 0 && (
           <div data-ocid="lookup.empty_state" className="text-center py-16">
             <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mx-auto mb-5">
               <PawPrint size={36} className="text-primary" />
@@ -298,13 +331,18 @@ export default function BookingLookupPage({ navigate }: Props) {
           </div>
         )}
 
-        {!isLoading && bookings.length > 0 && (
+        {!isLoading && sortedBookings.length > 0 && (
           <div className="space-y-4">
             <p className="font-semibold text-foreground">
-              {bookings.length} booking{bookings.length !== 1 ? "s" : ""} found
+              {sortedBookings.length} booking
+              {sortedBookings.length !== 1 ? "s" : ""} found
             </p>
-            {(bookings as Public__4[]).map((b) => (
-              <BookingActivityCard key={b.id.toString()} booking={b} />
+            {sortedBookings.map((b) => (
+              <BookingActivityCard
+                key={b.id.toString()}
+                booking={b}
+                payment={paymentMap.get(b.id.toString()) ?? null}
+              />
             ))}
           </div>
         )}

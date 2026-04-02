@@ -11,7 +11,7 @@ import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
 import Nat "mo:core/Nat";
-import Iter "mo:core/Iter";
+import Text "mo:core/Text";
 
 // Apply migration with `with` clause
 
@@ -327,6 +327,13 @@ actor {
   };
 
   // Helper function to check if caller is a sitter assigned to a booking
+  // Helper: normalize phone to digits only (strips dashes, spaces, parens, etc.)
+  func normalizePhone(phone : Text) : Text {
+    let chars = phone.chars();
+    let digits = chars.filter(func(c : Char) : Bool { c.isDigit() });
+    Text.fromIter(digits);
+  };
+
   func isCallerAssignedSitter(caller : Principal, booking : Booking.Public) : Bool {
     if (caller.isAnonymous()) { return false };
     
@@ -574,7 +581,7 @@ actor {
       id = nextBookingId;
       clientName = input.clientName;
       clientEmail = input.clientEmail;
-      clientPhone = input.clientPhone;
+      clientPhone = normalizePhone(input.clientPhone);
       pets = input.pets;
       services = input.services;
       sitterIds = input.sitterIds;
@@ -651,7 +658,8 @@ actor {
 
   public query ({ caller }) func getBookingsByClientPhone(clientPhone : Text) : async [Booking.Public] {
     // Open for client self-lookup - no auth required
-    bookings.values().toArray().filter(func(b : Booking.Public) : Bool { b.clientPhone == clientPhone });
+    let normalized = normalizePhone(clientPhone);
+    bookings.values().toArray().filter(func(b : Booking.Public) : Bool { normalizePhone(b.clientPhone) == normalized });
   };
   public query ({ caller }) func getAllBookings() : async [Booking.Public] {
     if (not callerIsAdmin(caller)) {
