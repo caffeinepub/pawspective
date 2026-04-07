@@ -1,0 +1,318 @@
+type http_request_result = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type http_header = 
+ record {
+   name: text;
+   value: text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = 
+ record {
+   email: opt text;
+   name: text;
+   role: text;
+ };
+type UpdateStopTime = 
+ record {
+   id: Id;
+   stopTime: Time;
+ };
+type UpdateSplits = 
+ record {
+   bookingId: Id;
+   splits: vec PaymentSplit;
+ };
+type Update = 
+ record {
+   bio: text;
+   hourlyRate: nat;
+   id: Id;
+   isActive: bool;
+   location: text;
+   name: text;
+   photoUrl: text;
+   services: vec text;
+ };
+type TransformationOutput = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type TransformationInput = 
+ record {
+   context: blob;
+   response: http_request_result;
+ };
+type TimeSlot = 
+ record {
+   endTime: Time;
+   startTime: Time;
+ };
+type Time = int;
+type StripeSessionStatus = 
+ variant {
+   completed: record {
+                response: text;
+                userPrincipal: opt text;
+              };
+   failed: record {error: text;};
+ };
+type StripeConfiguration = 
+ record {
+   allowedCountries: vec text;
+   secretKey: text;
+ };
+type ShoppingItem = 
+ record {
+   currency: text;
+   priceInCents: nat;
+   productDescription: text;
+   productName: text;
+   quantity: nat;
+ };
+type ServiceStatus = 
+ variant {
+   checkedIn;
+   completed;
+   inProgress;
+   issueReported;
+ };
+type ServiceSlot = 
+ record {
+   durationMinutes: nat;
+   endTime: text;
+   ratePerHour: nat;
+   "service": text;
+   sitterId: nat;
+   startTime: text;
+ };
+type RecurrencePattern = 
+ variant {
+   biweekly;
+   monthly;
+   weekly;
+ };
+type Public__4 = 
+ record {
+   clientEmail: text;
+   clientName: text;
+   clientPhone: text;
+   createdAt: Time;
+   endDate: Time;
+   id: Id;
+   isRecurring: bool;
+   notes: text;
+   paymentSessionId: opt text;
+   pets: vec Pet;
+   recurrenceEndDate: opt Time;
+   recurrencePattern: opt RecurrencePattern;
+   schedule: opt vec DaySchedule;
+   serviceSchedule: opt vec DayServiceSchedule;
+   services: vec text;
+   sitterIds: vec nat;
+   startDate: Time;
+   status: BookingStatus;
+   stripePaymentIntentId: opt text;
+   tip: opt nat;
+ };
+type Public__3 = 
+ record {
+   bookingId: Id;
+   confirmedAt: opt Time;
+   manualConfirmedBy: opt principal;
+   method: PaymentMethod;
+   notes: opt text;
+   splits: vec PaymentSplit;
+   status: PaymentStatus;
+   stripePaymentIntentId: opt text;
+   totalAmount: nat;
+ };
+type Public__2 = 
+ record {
+   bookingId: Id;
+   createdAt: Time;
+   id: Id;
+   notes: text;
+   sitterId: Id;
+   startTime: opt Time;
+   status: ServiceStatus;
+   stopTime: opt Time;
+ };
+type Public__1 = 
+ record {
+   ratePerHour: nat;
+   "service": text;
+ };
+type Public = 
+ record {
+   bio: text;
+   hourlyRate: nat;
+   id: nat;
+   isActive: bool;
+   location: text;
+   name: text;
+   owner: opt principal;
+   photoUrl: text;
+   rating: float64;
+   reviewCount: nat;
+   serviceRates: vec Public__1;
+   services: vec text;
+ };
+type Pet = 
+ record {
+   breed: opt text;
+   petName: text;
+   petNotes: opt text;
+   petType: text;
+ };
+type PaymentStatus = 
+ variant {
+   paid;
+   pending;
+   refunded;
+ };
+type PaymentSplit = 
+ record {
+   amount: nat;
+   paid: bool;
+   sitterId: Id;
+ };
+type PaymentMethod = 
+ variant {
+   manual;
+   stripe;
+ };
+type Message = 
+ record {
+   content: text;
+   senderId: opt principal;
+   senderName: text;
+   timestamp: Time;
+ };
+type Id = nat;
+type DayServiceSchedule = 
+ record {
+   date: text;
+   slots: vec ServiceSlot;
+ };
+type DaySchedule = 
+ record {
+   date: Time;
+   slots: vec TimeSlot;
+ };
+type Creation__3 = 
+ record {
+   clientEmail: text;
+   clientName: text;
+   clientPhone: text;
+   endDate: Time;
+   isRecurring: bool;
+   notes: text;
+   pets: vec Pet;
+   recurrenceEndDate: opt Time;
+   recurrencePattern: opt RecurrencePattern;
+   schedule: opt vec DaySchedule;
+   serviceSchedule: opt vec DayServiceSchedule;
+   services: vec text;
+   sitterIds: vec nat;
+   startDate: Time;
+   tip: opt nat;
+ };
+type Creation__2 = 
+ record {
+   bookingId: Id;
+   method: PaymentMethod;
+   notes: opt text;
+   splits: vec PaymentSplit;
+   totalAmount: nat;
+ };
+type Creation__1 = 
+ record {
+   bio: text;
+   hourlyRate: nat;
+   location: text;
+   name: text;
+   photoUrl: text;
+   services: vec text;
+ };
+type Creation = 
+ record {
+   bookingId: Id;
+   notes: text;
+   sitterId: Id;
+   startTime: opt Time;
+   status: ServiceStatus;
+ };
+type BookingStatus = 
+ variant {
+   cancelled;
+   completed;
+   confirmed;
+   pending;
+ };
+type AvailabilityEntry = 
+ record {
+   dayOfWeek: nat;
+   endTime: nat;
+   startTime: nat;
+ };
+service : {
+  _initializeAccessControlWithSecret: (userSecret: text) -> ();
+  addMessage: (bookingId: Id, senderName: text, content: text) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  claimFirstAdmin: () -> (bool);
+  confirmManualPayment: (bookingId: Id) -> ();
+  createBooking: (input: Creation__3) -> (Public__4);
+  createCheckoutSession: (items: vec ShoppingItem, successUrl: text,
+   cancelUrl: text) -> (text);
+  createPayment: (input: Creation__2) -> (Public__3);
+  createSitterProfile: (input: Creation__1) -> (Public);
+  deleteSitterProfile: (id: Id) -> ();
+  getActiveSitters: () -> (vec Public) query;
+  getAllBookings: () -> (vec Public__4) query;
+  getAllPayments: () -> (vec Public__3) query;
+  getAllSitters: () -> (vec Public) query;
+  getBookingsByClientEmail: (clientEmail: text) -> (vec Public__4) query;
+  getBookingsByClientPhone: (clientPhone: text) -> (vec Public__4) query;
+  getBookingsBySitter: (sitterId: Id) -> (vec Public__4) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getMessages: (bookingId: Id) -> (vec Message) query;
+  getPayment: (bookingId: Id) -> (opt Public__3) query;
+  getPaymentsByBookingIds: (bookingIds: vec text) -> (vec Public__3) query;
+  getServiceLogsByBooking: (bookingId: Id) -> (vec Public__2) query;
+  getSitterAvailability: (sitterId: Id) -> (vec AvailabilityEntry) query;
+  getSitterProfile: (id: Id) -> (Public) query;
+  getSitterServiceRates: (sitterId: Id) -> (vec Public__1) query;
+  getStripeSessionStatus: (sessionId: text) -> (StripeSessionStatus);
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  isAdminAssigned: () -> (bool) query;
+  isCallerAdmin: () -> (bool) query;
+  isStripeConfigured: () -> (bool) query;
+  postServiceLog: (input: Creation) -> (Public__2);
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  setSitterAvailability: (sitterId: Id, entries: vec AvailabilityEntry) -> ();
+  setSitterServiceRates: (sitterId: Id, rates: vec Public__1) -> ();
+  setStripeConfiguration: (config: StripeConfiguration) -> ();
+  submitReview: (sitterId: Id, rating: float64) -> ();
+  transform: (input: TransformationInput) -> (TransformationOutput) query;
+  updateBookingStatus: (bookingId: Id, newStatus:
+   variant {
+     cancelled;
+     completed;
+     confirmed;
+   }) -> ();
+  updatePaymentSplits: (input: UpdateSplits) -> ();
+  updateServiceLogStopTime: (input: UpdateStopTime) -> ();
+  updateSitterProfile: (input: Update) -> (Public);
+}

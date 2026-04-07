@@ -1,0 +1,195 @@
+// Version: 1.0.0
+type AvailabilityEntry__848491344 =
+  {dayOfWeek : Nat; endTime : Nat; startTime : Nat};
+type Availability__351700976 = {entries : [AvailabilityEntry__848491344]};
+type BookingStatus__163633778 =
+  {#cancelled; #completed; #confirmed; #pending};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type DaySchedule__841151278 =
+  {date : Time__900049286; slots : [TimeSlot__156048419]};
+type DayServiceSchedule__40846757 =
+  {date : Text; slots : [ServiceSlot__692584283]};
+type Id__591236439 = Nat;
+type Id__76783442 = Nat;
+type Id__927832379 = Nat;
+type Int__270357528 = Int__616954475;
+type Int__616954475 = Int;
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Message__19119041 =
+  {
+    content : Text;
+    senderId : ?Principal;
+    senderName : Text;
+    timestamp : Time__900049286
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type PaymentMethod__68978920 = {#manual; #stripe};
+type PaymentSplit__357254865 =
+  {amount : Nat; paid : Bool; sitterId : Id__76783442};
+type PaymentStatus__876794400 = {#paid; #pending; #refunded};
+type Pet__460133559 =
+  {breed : ?Text; petName : Text; petNotes : ?Text; petType : Text};
+type Public__173335931 =
+  {
+    clientEmail : Text;
+    clientName : Text;
+    clientPhone : Text;
+    createdAt : Time__900049286;
+    endDate : Time__900049286;
+    id : Id__927832379;
+    isRecurring : Bool;
+    notes : Text;
+    paymentSessionId : ?Text;
+    pets : [Pet__460133559];
+    recurrenceEndDate : ?Time__900049286;
+    recurrencePattern : ?RecurrencePattern__284318290;
+    schedule : ?[DaySchedule__841151278];
+    serviceSchedule : ?[DayServiceSchedule__40846757];
+    services : [Text];
+    sitterIds : [Nat];
+    startDate : Time__900049286;
+    status : BookingStatus__163633778;
+    stripePaymentIntentId : ?Text;
+    tip : ?Nat
+  };
+type Public__590275253 =
+  {
+    bookingId : Id__927832379;
+    createdAt : Time__900049286;
+    id : Id__591236439;
+    notes : Text;
+    sitterId : Id__76783442;
+    startTime : ?Time__900049286;
+    status : ServiceStatus__973009612;
+    stopTime : ?Time__900049286
+  };
+type Public__759654708 =
+  {
+    bio : Text;
+    hourlyRate : Nat;
+    id : Nat;
+    isActive : Bool;
+    location : Text;
+    name : Text;
+    owner : ?Principal;
+    photoUrl : Text;
+    rating : Float;
+    reviewCount : Nat;
+    serviceRates : [Public__786825652];
+    services : [Text]
+  };
+type Public__786825652 = {ratePerHour : Nat; service : Text};
+type Public__99402151 =
+  {
+    bookingId : Id__927832379;
+    confirmedAt : ?Time__900049286;
+    manualConfirmedBy : ?Principal;
+    method : PaymentMethod__68978920;
+    notes : ?Text;
+    splits : [PaymentSplit__357254865];
+    status : PaymentStatus__876794400;
+    stripePaymentIntentId : ?Text;
+    totalAmount : Nat
+  };
+type RecurrencePattern__284318290 = {#biweekly; #monthly; #weekly};
+type ServiceSlot__692584283 =
+  {
+    durationMinutes : Nat;
+    endTime : Text;
+    ratePerHour : Nat;
+    service : Text;
+    sitterId : Nat;
+    startTime : Text
+  };
+type ServiceStatus__973009612 =
+  {#checkedIn; #completed; #inProgress; #issueReported};
+type StripeConfiguration__673337918 =
+  {allowedCountries : [Text]; secretKey : Text};
+type TimeSlot__156048419 =
+  {endTime : Time__900049286; startTime : Time__900049286};
+type Time__796480547 = Int__270357528;
+type Time__900049286 = Time__796480547;
+type UserProfile__491224006 = {email : ?Text; name : Text; role : Text};
+type UserRole__521596351 = {#admin; #guest; #user};
+actor {
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__521596351>
+    };
+  stable availabilities :
+    {
+      var root : Node__46230540<Id__76783442, Availability__351700976>;
+      var size : Nat__490723111
+    };
+  stable bookings :
+    {
+      var root : Node__46230540<Id__927832379, Public__173335931>;
+      var size : Nat__490723111
+    };
+  stable messages :
+    {
+      var root :
+        Node__46230540<Id__927832379, List__415060402<Message__19119041>>;
+      var size : Nat__490723111
+    };
+  stable var nextBookingId : Nat;
+  stable var nextServiceLogId : Nat;
+  stable var nextSitterId : Nat;
+  stable payments :
+    {
+      var root : Node__46230540<Id__927832379, Public__99402151>;
+      var size : Nat__490723111
+    };
+  stable serviceLogs :
+    {
+      var root : Node__46230540<Id__591236439, Public__590275253>;
+      var size : Nat__490723111
+    };
+  stable serviceRates :
+    {
+      var root : Node__46230540<Nat, Map__605269027<Text, Nat>>;
+      var size : Nat__490723111
+    };
+  stable sitters :
+    {
+      var root : Node__46230540<Id__76783442, Public__759654708>;
+      var size : Nat__490723111
+    };
+  stable var stableAdminAssigned : Bool;
+  stable var stableAvailabilities : [(Id__76783442, Availability__351700976)];
+  stable var stableBookings : [(Id__927832379, Public__173335931)];
+  stable var stableMessages : [(Id__927832379, [Message__19119041])];
+  stable var stableNextBookingId : Nat;
+  stable var stableNextServiceLogId : Nat;
+  stable var stableNextSitterId : Nat;
+  stable var stablePayments : [(Id__927832379, Public__99402151)];
+  stable var stableServiceLogs : [(Id__591236439, Public__590275253)];
+  stable var stableSitters : [(Id__76783442, Public__759654708)];
+  stable var stableStripeConfig : ?StripeConfiguration__673337918;
+  stable var stableUserProfiles : [(Principal, UserProfile__491224006)];
+  stable var stableUserRoles : [(Principal, UserRole__521596351)];
+  stable var stripeConfig : ?StripeConfiguration__673337918;
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    }
+};

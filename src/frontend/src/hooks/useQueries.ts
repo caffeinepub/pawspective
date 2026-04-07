@@ -10,7 +10,7 @@ import type {
   UpdateStopTime,
   backendInterface,
 } from "../backend.d";
-import { useActor } from "./useActor";
+import { useBackendActor as useActor } from "./useBackend";
 
 type SitterCreation = Parameters<backendInterface["createSitterProfile"]>[0];
 type SitterUpdate = Parameters<backendInterface["updateSitterProfile"]>[0];
@@ -154,6 +154,19 @@ export function useAllPayments() {
   });
 }
 
+export function usePaymentsByBookingIds(bookingIds: string[]) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["payments-by-bookings", bookingIds],
+    queryFn: async () => {
+      if (!actor || bookingIds.length === 0) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getPaymentsByBookingIds(bookingIds);
+    },
+    enabled: !!actor && !isFetching && bookingIds.length > 0,
+  });
+}
+
 export function useCallerProfile() {
   const { actor, isFetching } = useActor();
   return useQuery({
@@ -172,9 +185,17 @@ export function useIsAdmin() {
     queryKey: ["is-admin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        // If the call fails, return false so the claim screen shows
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
+    // Don't retry aggressively — a single false result is enough to show claim screen
+    retry: 1,
+    retryDelay: 1000,
   });
 }
 

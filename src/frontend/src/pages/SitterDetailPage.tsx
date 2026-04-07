@@ -18,22 +18,28 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Bird,
   CalendarDays,
   Car,
   Check,
   Clock,
   Copy,
+  Footprints,
+  Ham,
   Home,
   Loader2,
   MapPin,
+  Moon,
   PawPrint,
   Plus,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Star,
   Trash2,
   Trophy,
   Users,
+  UtensilsCrossed,
   X,
 } from "lucide-react";
 import React, { useState } from "react";
@@ -55,7 +61,7 @@ import type {
 } from "../backend.d";
 import { parseBadges } from "../components/SitterCard";
 import StatusBadge from "../components/StatusBadge";
-import { useActor } from "../hooks/useActor";
+import { useBackendActor as useActor } from "../hooks/useBackend";
 import {
   useActiveSitters,
   useCreateBooking,
@@ -69,17 +75,17 @@ interface Props {
   navigate: (view: View, sitterId?: bigint) => void;
 }
 
-const ALL_SERVICES = [
-  { name: "Dog Walking", emoji: "🚶" },
-  { name: "Boarding", emoji: "🏠" },
-  { name: "Overnight Stay", emoji: "🌙" },
-  { name: "Drop-In Visit", emoji: "🏡" },
-  { name: "Pet Feeding", emoji: "🍽️" },
-  { name: "Playtime & Hang Out", emoji: "🎾" },
-  { name: "Cat Sitting", emoji: "🐱" },
-  { name: "Pet Sitting", emoji: "🐾" },
-  { name: "Small Pet Care", emoji: "🐹" },
-  { name: "Bird Care", emoji: "🦜" },
+const ALL_SERVICES: Array<{ name: string; Icon: React.ElementType }> = [
+  { name: "Dog Walking", Icon: Footprints },
+  { name: "Boarding", Icon: Home },
+  { name: "Overnight Stay", Icon: Moon },
+  { name: "Drop-In Visit", Icon: Home },
+  { name: "Pet Feeding", Icon: UtensilsCrossed },
+  { name: "Playtime & Hang Out", Icon: Sparkles },
+  { name: "Cat Sitting", Icon: PawPrint },
+  { name: "Pet Sitting", Icon: PawPrint },
+  { name: "Small Pet Care", Icon: Ham },
+  { name: "Bird Care", Icon: Bird },
 ];
 
 const PET_TYPES = [
@@ -535,8 +541,8 @@ function DayServiceScheduler({
             </div>
           </div>
           {allSlots.length >= 3 && (
-            <p className="text-xs text-emerald-400 text-center">
-              🎉 Bundle discount applied!
+            <p className="text-xs text-emerald-400 text-center flex items-center justify-center gap-1">
+              <Sparkles size={12} /> Bundle discount applied!
             </p>
           )}
         </div>
@@ -1025,7 +1031,12 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                           />
                         </span>
                       )}
-                      <span className="text-2xl">{svc.emoji}</span>
+                      <svc.Icon
+                        size={22}
+                        className={
+                          sel ? "text-primary" : "text-muted-foreground"
+                        }
+                      />
                       <span
                         className={cn(
                           "text-xs font-semibold leading-tight",

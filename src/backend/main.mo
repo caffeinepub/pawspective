@@ -330,7 +330,7 @@ actor {
   // Helper: normalize phone to digits only (strips dashes, spaces, parens, etc.)
   func normalizePhone(phone : Text) : Text {
     let chars = phone.chars();
-    let digits = chars.filter(func(c : Char) : Bool { c.isDigit() });
+    let digits = chars.filter(func(c : Char) : Bool { c >= '0' and c <= '9' });
     Text.fromIter(digits);
   };
 
@@ -370,7 +370,7 @@ actor {
     // Also allow re-claim if caller is NOT currently an admin
     // (app owner switched device/anchor and lost access)
     switch (accessControlState.userRoles.get(caller)) {
-      case (?#admin) { return false }; // already admin, no-op
+      case (?#admin) { return true }; // already admin, success
       case (_) {
         // Caller is not admin — grant them admin (recovers from lost anchor)
         accessControlState.userRoles.add(caller, #admin);
@@ -659,7 +659,11 @@ actor {
   public query ({ caller }) func getBookingsByClientPhone(clientPhone : Text) : async [Booking.Public] {
     // Open for client self-lookup - no auth required
     let normalized = normalizePhone(clientPhone);
-    bookings.values().toArray().filter(func(b : Booking.Public) : Bool { normalizePhone(b.clientPhone) == normalized });
+    // Primary match: normalize stored phone AND input (handles all formats)
+    // Fallback: raw-string match for legacy bookings stored before normalization was introduced
+    bookings.values().toArray().filter(func(b : Booking.Public) : Bool {
+      normalizePhone(b.clientPhone) == normalized or b.clientPhone == clientPhone
+    });
   };
   public query ({ caller }) func getAllBookings() : async [Booking.Public] {
     if (not callerIsAdmin(caller)) {
@@ -794,6 +798,27 @@ actor {
     };
     payments.values().toArray();
   };
+
+  // Public query: anyone can check payment status for specific booking IDs they provide.
+  // Used by client-facing pages (ClientDashboard, BookingLookupPage) to show paid/unpaid.
+  public query func getPaymentsByBookingIds(bookingIds : [Text]) : async [PaymentRecord.Public] {
+    let result = List.empty<PaymentRecord.Public>();
+    for (idText in bookingIds.values()) {
+      switch (Nat.fromText(idText)) {
+        case (null) { /* skip invalid */ };
+        case (?id) {
+          switch (payments.get(id)) {
+            case (null) { /* no payment record yet */ };
+            case (?p) { result.add(p) };
+          };
+        };
+      };
+    };
+    result.values().toArray();
+  };
+
+  // Public query: returns true if the caller is an admin.
+  // Note: isCallerAdmin() is also provided by MixinAuthorization — no duplicate needed here.
 
   // Message Functions
   public shared ({ caller }) func addMessage(bookingId : Booking.Id, senderName : Text, content : Text) : async () {

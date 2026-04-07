@@ -1,0 +1,24 @@
+{
+  "overview": "Pawspective is a premium pet sitting marketplace that rivals Rover.com. Clients can browse sitters, book multi-service recurring appointments with a DoorDash-style live cart, and track their pet care in real time. Sitters manage their profiles, availability, invoices, and earnings. Admins oversee the entire platform with full analytics, sitter approvals, and booking management.",
+  "features": [
+    "Multi-service booking wizard with live cart and bundle discounts",
+    "Sitter profiles with portfolio pages, per-service rates, and verification badges",
+    "Admin dashboard with analytics, sitter approvals, and booking management",
+    "Client booking lookup by phone or email with payment status",
+    "Professional invoice printing with gradient design and PAID stamp",
+    "Internet Identity passkey login for sitters and admins",
+    "Live activity feed with real-time service updates",
+    "Dark mode support with premium OKLCH color system",
+    "Sitter application flow with admin review and approval",
+    "Reviews and ratings system for completed bookings"
+  ],
+  "category": "marketplace",
+  "tags": [
+    "pet-sitting",
+    "marketplace",
+    "booking",
+    "admin-dashboard",
+    "invoicing"
+  ],
+  "last_updated": "2026-04-07T20:48:34.630Z"
+}

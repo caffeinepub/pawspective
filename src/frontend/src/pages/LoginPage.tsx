@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -19,7 +20,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { View } from "../App";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCallerProfile,
   useIsAdmin,
@@ -114,6 +114,7 @@ export default function LoginPage({ navigate }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [showComparison, setShowComparison] = useState(false);
   // Track whether user just completed the save action (triggers redirect)
   const [justSaved, setJustSaved] = useState(false);
@@ -144,6 +145,7 @@ export default function LoginPage({ navigate }: Props) {
   }, [justSaved, isAdmin, adminLoading, navigate]);
 
   const handleSave = async () => {
+    setSaveError("");
     try {
       await saveProfile.mutateAsync({
         name,
@@ -156,7 +158,9 @@ export default function LoginPage({ navigate }: Props) {
       // Refetch admin status so redirect goes to correct dashboard
       queryClient.invalidateQueries({ queryKey: ["is-admin"] });
     } catch {
-      toast.error("Failed to save profile.");
+      setSaveError(
+        "Something went wrong saving your profile. Please try again.",
+      );
     }
   };
 
@@ -461,7 +465,7 @@ export default function LoginPage({ navigate }: Props) {
                           <h3 className="font-display font-bold text-lg">
                             {saved
                               ? "Welcome back!"
-                              : "Welcome to Pawspective! 🐾"}
+                              : "Welcome to Pawspective!"}
                           </h3>
                           <p className="text-sm text-muted-foreground mt-0.5">
                             {saved
@@ -519,6 +523,11 @@ export default function LoginPage({ navigate }: Props) {
                             "Continue →"
                           )}
                         </Button>
+                        {saveError && (
+                          <p className="text-sm text-destructive text-center font-medium">
+                            {saveError}
+                          </p>
+                        )}
                       </div>
                     )}
 

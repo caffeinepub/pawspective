@@ -22,9 +22,9 @@ import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
 import {
   useActiveSitters,
-  useAllPayments,
   useBookingsByEmail,
   useBookingsByPhone,
+  usePaymentsByBookingIds,
   useSubmitReview,
 } from "../hooks/useQueries";
 
@@ -105,13 +105,6 @@ export default function ClientDashboard({
   // Load sitters to show names/avatars
   const { data: allSittersRaw = [] } = useActiveSitters();
   const allSitters = allSittersRaw as Public[];
-  const { data: allPaymentsRaw = [] } = useAllPayments();
-  const allPayments = allPaymentsRaw as Public__3[];
-  const paymentMap = useMemo(() => {
-    const m = new Map<string, Public__3>();
-    for (const p of allPayments) m.set(p.bookingId.toString(), p);
-    return m;
-  }, [allPayments]);
 
   // Sort bookings descending by startDate
   const sortedBookings = useMemo(() => {
@@ -121,6 +114,18 @@ export default function ClientDashboard({
     return [...raw].sort((a, b) => Number(b.startDate - a.startDate));
   }, [lookupMode, emailBookings, phoneBookings]);
 
+  const bookingIds = useMemo(
+    () => sortedBookings.map((b) => b.id.toString()),
+    [sortedBookings],
+  );
+  const { data: paymentsRaw = [] } = usePaymentsByBookingIds(bookingIds);
+  const allPayments = paymentsRaw as Public__3[];
+  const paymentMap = useMemo(() => {
+    const m = new Map<string, Public__3>();
+    for (const p of allPayments) m.set(p.bookingId.toString(), p);
+    return m;
+  }, [allPayments]);
+
   // Track reviewed booking IDs and active review state
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -128,13 +133,21 @@ export default function ClientDashboard({
   const [reviewText, setReviewText] = useState("");
   const submitReview = useSubmitReview();
 
+  const [phoneError, setPhoneError] = useState("");
+
   const handleSearch = () => {
     if (lookupMode === "email") {
       if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
     } else {
       const normalized = normalizePhone(phoneInput.trim());
-      if (normalized.length >= 10) setSubmittedPhone(normalized);
-      else if (phoneInput.trim()) setSubmittedPhone(normalized);
+      if (normalized.length >= 10) {
+        setPhoneError("");
+        setSubmittedPhone(normalized);
+      } else {
+        setPhoneError(
+          "Please enter a valid phone number (e.g. 555-123-4567 or 5551234567)",
+        );
+      }
     }
   };
 
@@ -273,7 +286,10 @@ export default function ClientDashboard({
                 id="cd-phone"
                 type="tel"
                 value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
+                onChange={(e) => {
+                  setPhoneInput(e.target.value);
+                  setPhoneError("");
+                }}
                 placeholder="(555) 123-4567"
                 className="rounded-full"
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -287,6 +303,9 @@ export default function ClientDashboard({
               <Search size={16} />
             </Button>
           </div>
+          {lookupMode === "phone" && phoneError && (
+            <p className="text-xs text-destructive mt-2">{phoneError}</p>
+          )}
         </div>
 
         {isLoading && (
@@ -305,9 +324,14 @@ export default function ClientDashboard({
             <h3 className="font-display font-semibold text-lg">
               No bookings found
             </h3>
-            <p className="text-muted-foreground mt-1">
-              No bookings for <strong>{submittedIdentifier}</strong>
+            <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
+              No bookings found for <strong>{submittedIdentifier}</strong>
             </p>
+            {lookupMode === "phone" && (
+              <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+                Try the email address used when booking instead.
+              </p>
+            )}
             <Button
               onClick={() => navigate("home")}
               className="mt-4 rounded-full bg-primary text-primary-foreground"
@@ -337,7 +361,8 @@ export default function ClientDashboard({
                   ? getSitterName(b.sitterIds[0])
                   : "your sitter";
               const payment = paymentMap.get(bookingIdStr) ?? null;
-              const isPaid = payment?.status === PaymentStatus.paid;
+              const isPaid =
+                payment !== null && payment.status === PaymentStatus.paid;
 
               return (
                 <div
@@ -353,17 +378,15 @@ export default function ClientDashboard({
                           #{bookingIdStr}
                         </span>
                         <StatusBadge status={b.status} />
-                        {payment && (
-                          <span
-                            className={
-                              isPaid
-                                ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
-                                : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-                            }
-                          >
-                            {isPaid ? "✓ Paid" : "⏳ Unpaid"}
-                          </span>
-                        )}
+                        <span
+                          className={
+                            isPaid
+                              ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                              : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                          }
+                        >
+                          {isPaid ? "✓ Paid" : "Unpaid"}
+                        </span>
                       </div>
                       <div className="flex gap-1.5">
                         <Button

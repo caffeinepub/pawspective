@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Clock,
@@ -32,14 +34,12 @@ import type { AvailabilityEntry, Public, Public__4 } from "../backend.d";
 import BookingCard from "../components/BookingCard";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import SitterInvoicesTab from "../components/SitterInvoicesTab";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAllSitters,
   useBookingsBySitter,
   useCallerProfile,
   useClaimFirstAdmin,
   useCreateSitter,
-  useIsAdminAssigned,
   useSaveProfile,
   useSetSitterAvailability,
   useSetSitterServiceRates,
@@ -297,38 +297,36 @@ function ServiceRatesEditor({
 function AdminClaimSection({
   navigate,
 }: { navigate: (view: import("../App").View) => void }) {
-  const { data: adminAssigned } = useIsAdminAssigned();
   const claimAdmin = useClaimFirstAdmin();
-
-  if (adminAssigned === true) return null;
+  const queryClient = useQueryClient();
 
   return (
-    <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl sm:col-span-2">
+    <div className="mt-4 p-4 bg-muted/50 border border-border rounded-xl sm:col-span-2">
       <div className="flex items-start gap-3">
-        <ShieldCheck size={18} className="text-amber-600 mt-0.5 shrink-0" />
+        <ShieldCheck size={18} className="text-primary mt-0.5 shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-bold text-amber-800">Admin Access</p>
-          <p className="text-xs text-amber-700 mt-0.5">
-            No admin has been configured yet. You can claim admin access for
-            this app.
+          <p className="text-sm font-bold text-foreground">Admin Access</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            If you are the app owner, click below to claim or reclaim admin
+            access. Works any time — even after redeployments.
           </p>
           <Button
             size="sm"
             onClick={() =>
               claimAdmin.mutate(undefined, {
-                onSuccess: (claimed) => {
-                  if (claimed) {
-                    toast.success("Admin access claimed!");
-                    navigate("admin-dashboard");
-                  } else {
-                    toast.error("Admin is already configured by someone else.");
-                  }
+                onSuccess: () => {
+                  toast.success("Admin access claimed!");
+                  queryClient.invalidateQueries({ queryKey: ["is-admin"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["is-admin-assigned"],
+                  });
+                  setTimeout(() => navigate("admin-dashboard"), 600);
                 },
                 onError: () => toast.error("Failed to claim admin access."),
               })
             }
             disabled={claimAdmin.isPending}
-            className="mt-2 rounded-full bg-amber-600 hover:bg-amber-700 text-white h-8 px-4 text-xs font-semibold"
+            className="mt-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-4 text-xs font-semibold"
             data-ocid="profile.claim_admin.button"
           >
             {claimAdmin.isPending ? (

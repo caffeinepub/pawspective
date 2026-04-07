@@ -19,9 +19,9 @@ import { PaymentStatus } from "../backend.d";
 import ServiceLogTimeline from "../components/ServiceLogTimeline";
 import StatusBadge from "../components/StatusBadge";
 import {
-  useAllPayments,
   useBookingsByEmail,
   useBookingsByPhone,
+  usePaymentsByBookingIds,
 } from "../hooks/useQueries";
 
 interface Props {
@@ -47,14 +47,14 @@ function getStatusKey(status: unknown): string {
   return String(status ?? "");
 }
 
-const PET_EMOJIS: Record<string, string> = {
-  Dog: "🐶",
-  Cat: "🐱",
-  Bird: "🦜",
-  Rabbit: "🐰",
-  Fish: "🐟",
-  "Small Animal": "🐹",
-  Other: "🐾",
+const PET_LABELS: Record<string, string> = {
+  Dog: "Dog",
+  Cat: "Cat",
+  Bird: "Bird",
+  Rabbit: "Rabbit",
+  Fish: "Fish",
+  "Small Animal": "Small Animal",
+  Other: "Other",
 };
 
 function BookingActivityCard({
@@ -63,12 +63,12 @@ function BookingActivityCard({
 }: { booking: Public__4; payment: Public__3 | null }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = getStatusKey(booking.status) === "confirmed";
-  const isPaid = payment?.status === PaymentStatus.paid;
+  const isPaid = payment !== null && payment?.status === PaymentStatus.paid;
 
   const petsLabel =
     booking.pets?.length > 0
       ? booking.pets
-          .map((p) => `${PET_EMOJIS[p.petType] ?? "🐾"} ${p.petName}`)
+          .map((p) => `${PET_LABELS[p.petType] ?? p.petType} ${p.petName}`)
           .join(", ")
       : "No pets";
 
@@ -82,17 +82,15 @@ function BookingActivityCard({
                 #{booking.id.toString()}
               </span>
               <StatusBadge status={booking.status} />
-              {payment && (
-                <span
-                  className={
-                    isPaid
-                      ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
-                      : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
-                  }
-                >
-                  {isPaid ? "✓ Paid" : "⏳ Unpaid"}
-                </span>
-              )}
+              <span
+                className={
+                  isPaid
+                    ? "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                    : "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                }
+              >
+                {isPaid ? "✓ Paid" : "Unpaid"}
+              </span>
               {booking.isRecurring && (
                 <Badge
                   variant="outline"
@@ -163,19 +161,12 @@ export default function BookingLookupPage({ navigate }: Props) {
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
   const [submittedPhone, setSubmittedPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const { data: emailBookings = [], isLoading: emailLoading } =
     useBookingsByEmail(submittedEmail);
   const { data: phoneBookings = [], isLoading: phoneLoading } =
     useBookingsByPhone(submittedPhone);
-
-  const { data: allPaymentsRaw = [] } = useAllPayments();
-  const allPayments = allPaymentsRaw as Public__3[];
-  const paymentMap = useMemo(() => {
-    const m = new Map<string, Public__3>();
-    for (const p of allPayments) m.set(p.bookingId.toString(), p);
-    return m;
-  }, [allPayments]);
 
   const rawBookings = (
     lookupMode === "email" ? emailBookings : phoneBookings
@@ -183,6 +174,18 @@ export default function BookingLookupPage({ navigate }: Props) {
   const sortedBookings = useMemo(() => {
     return [...rawBookings].sort((a, b) => Number(b.startDate - a.startDate));
   }, [rawBookings]);
+
+  const bookingIds = useMemo(
+    () => sortedBookings.map((b) => b.id.toString()),
+    [sortedBookings],
+  );
+  const { data: paymentsRaw = [] } = usePaymentsByBookingIds(bookingIds);
+  const allPayments = paymentsRaw as Public__3[];
+  const paymentMap = useMemo(() => {
+    const m = new Map<string, Public__3>();
+    for (const p of allPayments) m.set(p.bookingId.toString(), p);
+    return m;
+  }, [allPayments]);
   const isLoading = lookupMode === "email" ? emailLoading : phoneLoading;
   const submittedIdentifier =
     lookupMode === "email" ? submittedEmail : submittedPhone;
@@ -192,7 +195,14 @@ export default function BookingLookupPage({ navigate }: Props) {
       if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
     } else {
       const normalized = normalizePhone(phoneInput.trim());
-      if (normalized.length >= 10) setSubmittedPhone(normalized);
+      if (normalized.length >= 10) {
+        setPhoneError("");
+        setSubmittedPhone(normalized);
+      } else {
+        setPhoneError(
+          "Please enter a valid phone number (e.g. 555-123-4567 or 5551234567)",
+        );
+      }
     }
   };
 
@@ -282,7 +292,10 @@ export default function BookingLookupPage({ navigate }: Props) {
                 id="lookup-phone"
                 type="tel"
                 value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
+                onChange={(e) => {
+                  setPhoneInput(e.target.value);
+                  setPhoneError("");
+                }}
                 placeholder="(555) 123-4567"
                 className="rounded-full"
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -296,13 +309,9 @@ export default function BookingLookupPage({ navigate }: Props) {
               <Search size={16} className="mr-1.5" /> Search
             </Button>
           </div>
-          {lookupMode === "phone" &&
-            phoneInput &&
-            normalizePhone(phoneInput).length < 10 && (
-              <p className="text-xs text-destructive mt-2">
-                Enter a valid 10-digit phone number
-              </p>
-            )}
+          {lookupMode === "phone" && phoneError && (
+            <p className="text-xs text-destructive mt-2">{phoneError}</p>
+          )}
           <p className="text-xs text-muted-foreground mt-3">
             We use your contact info to keep you updated on your pet&apos;s care
             and to reach you if needed.

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -49,6 +50,7 @@ import {
   PawPrint,
   Plus,
   ShieldCheck,
+  Star,
   Sun,
   Trash2,
   UserCheck,
@@ -70,7 +72,6 @@ import type {
 import { PaymentStatus } from "../backend.d";
 import { parseBadges } from "../components/SitterCard";
 import StatusBadge from "../components/StatusBadge";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAllBookings,
   useAllPayments,
@@ -1075,7 +1076,11 @@ export default function AdminDashboard({
 }: Props) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
   const { data: adminProfile } = useCallerProfile();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const {
+    data: isAdmin,
+    isLoading: adminLoading,
+    refetch: refetchIsAdmin,
+  } = useIsAdmin();
   const { data: adminAssigned } = useIsAdminAssigned();
   const claimAdmin = useClaimFirstAdmin();
   const queryClient = useQueryClient();
@@ -1144,44 +1149,47 @@ export default function AdminDashboard({
     );
   }
 
+  // Show claim screen when isAdmin is false/undefined
   if (!isAdmin) {
+    const handleClaim = () => {
+      claimAdmin.mutate(undefined, {
+        onSuccess: () => {
+          toast.success("Admin access claimed! Loading your dashboard...");
+          // Invalidate all admin-related queries and force a re-check
+          queryClient.invalidateQueries({ queryKey: ["is-admin"] });
+          queryClient.invalidateQueries({ queryKey: ["is-admin-assigned"] });
+          queryClient.invalidateQueries({ queryKey: ["caller-profile"] });
+          queryClient.invalidateQueries({ queryKey: ["all-sitters"] });
+          // Force refetch after brief delay to let invalidation propagate
+          setTimeout(() => {
+            refetchIsAdmin();
+          }, 800);
+        },
+        onError: () =>
+          toast.error("Failed to claim admin access. Please try again."),
+      });
+    };
+
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
-        <ShieldCheck size={40} className="text-muted-foreground" />
-        <h2 className="font-display text-xl font-bold">
-          {"Set Up Admin Access"}
-        </h2>
-        <p className="text-muted-foreground text-center max-w-sm">
-          {adminAssigned !== true
-            ? "No admin has been set up yet. Since you're logged in, you can claim admin access now."
-            : "If you are the app owner, you can reclaim admin access below. This is needed after a fresh deployment."}
-        </p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 px-4">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+          <ShieldCheck size={28} className="text-primary" />
+        </div>
+        <div className="text-center max-w-sm">
+          <h2 className="font-display text-2xl font-bold mb-2">
+            Set Up Admin Access
+          </h2>
+          <p className="text-muted-foreground">
+            {adminAssigned !== true
+              ? "No admin has been configured yet. You can claim admin access now."
+              : "Click below to reclaim admin access. This works even after a canister redeploy or when switching devices."}
+          </p>
+        </div>
         <Button
-          onClick={() =>
-            claimAdmin.mutate(undefined, {
-              onSuccess: (claimed) => {
-                if (claimed) {
-                  toast.success("Admin access claimed!");
-                  queryClient.invalidateQueries({ queryKey: ["is-admin"] });
-                  queryClient.invalidateQueries({
-                    queryKey: ["is-admin-assigned"],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["caller-profile"],
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["all-sitters"] });
-                } else {
-                  toast.error(
-                    "Admin has already been claimed. If this is you, try signing out and back in.",
-                  );
-                }
-              },
-              onError: () =>
-                toast.error("Failed to claim admin access. Please try again."),
-            })
-          }
+          onClick={handleClaim}
           disabled={claimAdmin.isPending}
-          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 font-semibold"
+          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-12 font-semibold shadow-lg shadow-primary/20"
+          data-ocid="admin.claim.button"
         >
           {claimAdmin.isPending ? (
             <>
@@ -1189,13 +1197,22 @@ export default function AdminDashboard({
               Claiming...
             </>
           ) : (
-            "Claim Admin Access"
+            <>
+              <ShieldCheck size={16} className="mr-2" />
+              Claim Admin Access
+            </>
           )}
         </Button>
+        {claimAdmin.isError && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-sm text-destructive max-w-sm text-center">
+            Claim failed. Please wait a moment and try again, or reload the
+            page.
+          </div>
+        )}
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={() => navigate("home")}
-          className="rounded-full"
+          className="rounded-full text-muted-foreground"
         >
           <ArrowLeft size={14} className="mr-1" /> Back to Home
         </Button>
@@ -1504,7 +1521,17 @@ export default function AdminDashboard({
                           </TableCell>
                           <TableCell>${Number(s.hourlyRate)}/day</TableCell>
                           <TableCell>
-                            {s.rating > 0 ? `${s.rating.toFixed(1)} ⭐` : "New"}
+                            {s.rating > 0 ? (
+                              <span className="flex items-center gap-0.5">
+                                <Star
+                                  size={13}
+                                  className="fill-amber-400 text-amber-400 inline mr-0.5"
+                                />
+                                {s.rating.toFixed(1)}
+                              </span>
+                            ) : (
+                              "New"
+                            )}
                           </TableCell>
                           <TableCell>
                             {s.isActive ? (
@@ -1781,7 +1808,7 @@ export default function AdminDashboard({
                             ? p.splits
                                 .map(
                                   (s) =>
-                                    `#${s.sitterId}: $${(Number(s.amount) / 100).toFixed(2)} ${s.paid ? "✅" : "⏳"}`,
+                                    `#${s.sitterId}: $${(Number(s.amount) / 100).toFixed(2)} ${s.paid ? "Paid" : "Pending"}`,
                                 )
                                 .join(", ")
                             : "—"}

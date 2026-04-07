@@ -6,278 +6,271 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { ActorMethod } from "@icp-sdk/core/agent";
-import type { IDL } from "@icp-sdk/core/candid";
-import type { Principal } from "@icp-sdk/core/principal";
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AvailabilityEntry {
-  startTime: bigint;
-  endTime: bigint;
-  dayOfWeek: bigint;
+  'startTime' : bigint,
+  'endTime' : bigint,
+  'dayOfWeek' : bigint,
 }
-export type BookingStatus =
-  | { cancelled: null }
-  | { pending: null }
-  | { completed: null }
-  | { confirmed: null };
+export type BookingStatus = { 'cancelled' : null } |
+  { 'pending' : null } |
+  { 'completed' : null } |
+  { 'confirmed' : null };
 export interface Creation {
-  startTime: [] | [Time];
-  status: ServiceStatus;
-  bookingId: Id;
-  sitterId: Id;
-  notes: string;
+  'startTime' : [] | [Time],
+  'status' : ServiceStatus,
+  'bookingId' : Id,
+  'sitterId' : Id,
+  'notes' : string,
 }
 export interface Creation__1 {
-  bio: string;
-  name: string;
-  hourlyRate: bigint;
-  photoUrl: string;
-  location: string;
-  services: Array<string>;
+  'bio' : string,
+  'name' : string,
+  'hourlyRate' : bigint,
+  'photoUrl' : string,
+  'location' : string,
+  'services' : Array<string>,
 }
 export interface Creation__2 {
-  method: PaymentMethod;
-  bookingId: Id;
-  totalAmount: bigint;
-  notes: [] | [string];
-  splits: Array<PaymentSplit>;
+  'method' : PaymentMethod,
+  'bookingId' : Id,
+  'totalAmount' : bigint,
+  'notes' : [] | [string],
+  'splits' : Array<PaymentSplit>,
 }
 export interface Creation__3 {
-  tip: [] | [bigint];
-  endDate: Time;
-  serviceSchedule: [] | [Array<DayServiceSchedule>];
-  isRecurring: boolean;
-  clientName: string;
-  pets: Array<Pet>;
-  clientEmail: string;
-  recurrencePattern: [] | [RecurrencePattern];
-  recurrenceEndDate: [] | [Time];
-  notes: string;
-  clientPhone: string;
-  schedule: [] | [Array<DaySchedule>];
-  sitterIds: Array<bigint>;
-  services: Array<string>;
-  startDate: Time;
+  'tip' : [] | [bigint],
+  'endDate' : Time,
+  'serviceSchedule' : [] | [Array<DayServiceSchedule>],
+  'isRecurring' : boolean,
+  'clientName' : string,
+  'pets' : Array<Pet>,
+  'clientEmail' : string,
+  'recurrencePattern' : [] | [RecurrencePattern],
+  'recurrenceEndDate' : [] | [Time],
+  'notes' : string,
+  'clientPhone' : string,
+  'schedule' : [] | [Array<DaySchedule>],
+  'sitterIds' : Array<bigint>,
+  'services' : Array<string>,
+  'startDate' : Time,
 }
-export interface DaySchedule {
-  date: Time;
-  slots: Array<TimeSlot>;
-}
+export interface DaySchedule { 'date' : Time, 'slots' : Array<TimeSlot> }
 export interface DayServiceSchedule {
-  date: string;
-  slots: Array<ServiceSlot>;
+  'date' : string,
+  'slots' : Array<ServiceSlot>,
 }
 export type Id = bigint;
 export interface Message {
-  content: string;
-  timestamp: Time;
-  senderName: string;
-  senderId: [] | [Principal];
+  'content' : string,
+  'timestamp' : Time,
+  'senderName' : string,
+  'senderId' : [] | [Principal],
 }
-export type PaymentMethod = { stripe: null } | { manual: null };
+export type PaymentMethod = { 'stripe' : null } |
+  { 'manual' : null };
 export interface PaymentSplit {
-  sitterId: Id;
-  paid: boolean;
-  amount: bigint;
+  'sitterId' : Id,
+  'paid' : boolean,
+  'amount' : bigint,
 }
-export type PaymentStatus =
-  | { pending: null }
-  | { paid: null }
-  | { refunded: null };
+export type PaymentStatus = { 'pending' : null } |
+  { 'paid' : null } |
+  { 'refunded' : null };
 export interface Pet {
-  petNotes: [] | [string];
-  petName: string;
-  petType: string;
-  breed: [] | [string];
+  'petNotes' : [] | [string],
+  'petName' : string,
+  'petType' : string,
+  'breed' : [] | [string],
 }
 export interface Public {
-  id: bigint;
-  bio: string;
-  owner: [] | [Principal];
-  name: string;
-  hourlyRate: bigint;
-  photoUrl: string;
-  isActive: boolean;
-  serviceRates: Array<Public__1>;
-  rating: number;
-  reviewCount: bigint;
-  location: string;
-  services: Array<string>;
+  'id' : bigint,
+  'bio' : string,
+  'owner' : [] | [Principal],
+  'name' : string,
+  'hourlyRate' : bigint,
+  'photoUrl' : string,
+  'isActive' : boolean,
+  'serviceRates' : Array<Public__1>,
+  'rating' : number,
+  'reviewCount' : bigint,
+  'location' : string,
+  'services' : Array<string>,
 }
-export interface Public__1 {
-  service: string;
-  ratePerHour: bigint;
-}
+export interface Public__1 { 'service' : string, 'ratePerHour' : bigint }
 export interface Public__2 {
-  id: Id;
-  startTime: [] | [Time];
-  status: ServiceStatus;
-  bookingId: Id;
-  sitterId: Id;
-  createdAt: Time;
-  stopTime: [] | [Time];
-  notes: string;
+  'id' : Id,
+  'startTime' : [] | [Time],
+  'status' : ServiceStatus,
+  'bookingId' : Id,
+  'sitterId' : Id,
+  'createdAt' : Time,
+  'stopTime' : [] | [Time],
+  'notes' : string,
 }
 export interface Public__3 {
-  status: PaymentStatus;
-  method: PaymentMethod;
-  bookingId: Id;
-  confirmedAt: [] | [Time];
-  manualConfirmedBy: [] | [Principal];
-  totalAmount: bigint;
-  notes: [] | [string];
-  stripePaymentIntentId: [] | [string];
-  splits: Array<PaymentSplit>;
+  'status' : PaymentStatus,
+  'method' : PaymentMethod,
+  'bookingId' : Id,
+  'confirmedAt' : [] | [Time],
+  'manualConfirmedBy' : [] | [Principal],
+  'totalAmount' : bigint,
+  'notes' : [] | [string],
+  'stripePaymentIntentId' : [] | [string],
+  'splits' : Array<PaymentSplit>,
 }
 export interface Public__4 {
-  id: Id;
-  tip: [] | [bigint];
-  status: BookingStatus;
-  paymentSessionId: [] | [string];
-  endDate: Time;
-  serviceSchedule: [] | [Array<DayServiceSchedule>];
-  isRecurring: boolean;
-  clientName: string;
-  createdAt: Time;
-  pets: Array<Pet>;
-  clientEmail: string;
-  recurrencePattern: [] | [RecurrencePattern];
-  recurrenceEndDate: [] | [Time];
-  notes: string;
-  clientPhone: string;
-  stripePaymentIntentId: [] | [string];
-  schedule: [] | [Array<DaySchedule>];
-  sitterIds: Array<bigint>;
-  services: Array<string>;
-  startDate: Time;
+  'id' : Id,
+  'tip' : [] | [bigint],
+  'status' : BookingStatus,
+  'paymentSessionId' : [] | [string],
+  'endDate' : Time,
+  'serviceSchedule' : [] | [Array<DayServiceSchedule>],
+  'isRecurring' : boolean,
+  'clientName' : string,
+  'createdAt' : Time,
+  'pets' : Array<Pet>,
+  'clientEmail' : string,
+  'recurrencePattern' : [] | [RecurrencePattern],
+  'recurrenceEndDate' : [] | [Time],
+  'notes' : string,
+  'clientPhone' : string,
+  'stripePaymentIntentId' : [] | [string],
+  'schedule' : [] | [Array<DaySchedule>],
+  'sitterIds' : Array<bigint>,
+  'services' : Array<string>,
+  'startDate' : Time,
 }
-export type RecurrencePattern =
-  | { monthly: null }
-  | { biweekly: null }
-  | { weekly: null };
+export type RecurrencePattern = { 'monthly' : null } |
+  { 'biweekly' : null } |
+  { 'weekly' : null };
 export interface ServiceSlot {
-  service: string;
-  startTime: string;
-  sitterId: bigint;
-  endTime: string;
-  durationMinutes: bigint;
-  ratePerHour: bigint;
+  'service' : string,
+  'startTime' : string,
+  'sitterId' : bigint,
+  'endTime' : string,
+  'durationMinutes' : bigint,
+  'ratePerHour' : bigint,
 }
-export type ServiceStatus =
-  | { completed: null }
-  | { checkedIn: null }
-  | { issueReported: null }
-  | { inProgress: null };
+export type ServiceStatus = { 'completed' : null } |
+  { 'checkedIn' : null } |
+  { 'issueReported' : null } |
+  { 'inProgress' : null };
 export interface ShoppingItem {
-  productName: string;
-  currency: string;
-  quantity: bigint;
-  priceInCents: bigint;
-  productDescription: string;
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
 }
 export interface StripeConfiguration {
-  allowedCountries: Array<string>;
-  secretKey: string;
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
 }
-export type StripeSessionStatus =
-  | {
-      completed: { userPrincipal: [] | [string]; response: string };
-    }
-  | { failed: { error: string } };
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
 export type Time = bigint;
-export interface TimeSlot {
-  startTime: Time;
-  endTime: Time;
-}
+export interface TimeSlot { 'startTime' : Time, 'endTime' : Time }
 export interface TransformationInput {
-  context: Uint8Array;
-  response: http_request_result;
+  'context' : Uint8Array,
+  'response' : http_request_result,
 }
 export interface TransformationOutput {
-  status: bigint;
-  body: Uint8Array;
-  headers: Array<http_header>;
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface Update {
-  id: Id;
-  bio: string;
-  name: string;
-  hourlyRate: bigint;
-  photoUrl: string;
-  isActive: boolean;
-  location: string;
-  services: Array<string>;
+  'id' : Id,
+  'bio' : string,
+  'name' : string,
+  'hourlyRate' : bigint,
+  'photoUrl' : string,
+  'isActive' : boolean,
+  'location' : string,
+  'services' : Array<string>,
 }
 export interface UpdateSplits {
-  bookingId: Id;
-  splits: Array<PaymentSplit>;
+  'bookingId' : Id,
+  'splits' : Array<PaymentSplit>,
 }
-export interface UpdateStopTime {
-  id: Id;
-  stopTime: Time;
-}
+export interface UpdateStopTime { 'id' : Id, 'stopTime' : Time }
 export interface UserProfile {
-  name: string;
-  role: string;
-  email: [] | [string];
+  'name' : string,
+  'role' : string,
+  'email' : [] | [string],
 }
-export type UserRole = { admin: null } | { user: null } | { guest: null };
-export interface http_header {
-  value: string;
-  name: string;
-}
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
 export interface http_request_result {
-  status: bigint;
-  body: Uint8Array;
-  headers: Array<http_header>;
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface _SERVICE {
-  _initializeAccessControlWithSecret: ActorMethod<[string], undefined>;
-  addMessage: ActorMethod<[Id, string, string], undefined>;
-  assignCallerUserRole: ActorMethod<[Principal, UserRole], undefined>;
-  claimFirstAdmin: ActorMethod<[], boolean>;
-  confirmManualPayment: ActorMethod<[Id], undefined>;
-  createBooking: ActorMethod<[Creation__3], Public__4>;
-  createCheckoutSession: ActorMethod<
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addMessage' : ActorMethod<[Id, string, string], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'claimFirstAdmin' : ActorMethod<[], boolean>,
+  'confirmManualPayment' : ActorMethod<[Id], undefined>,
+  'createBooking' : ActorMethod<[Creation__3], Public__4>,
+  'createCheckoutSession' : ActorMethod<
     [Array<ShoppingItem>, string, string],
     string
-  >;
-  createPayment: ActorMethod<[Creation__2], Public__3>;
-  createSitterProfile: ActorMethod<[Creation__1], Public>;
-  deleteSitterProfile: ActorMethod<[Id], undefined>;
-  getActiveSitters: ActorMethod<[], Array<Public>>;
-  getAllBookings: ActorMethod<[], Array<Public__4>>;
-  getAllPayments: ActorMethod<[], Array<Public__3>>;
-  getAllSitters: ActorMethod<[], Array<Public>>;
-  getBookingsByClientEmail: ActorMethod<[string], Array<Public__4>>;
-  getBookingsBySitter: ActorMethod<[Id], Array<Public__4>>;
-  getCallerUserProfile: ActorMethod<[], [] | [UserProfile]>;
-  getCallerUserRole: ActorMethod<[], UserRole>;
-  getMessages: ActorMethod<[Id], Array<Message>>;
-  getPayment: ActorMethod<[Id], [] | [Public__3]>;
-  getServiceLogsByBooking: ActorMethod<[Id], Array<Public__2>>;
-  getSitterAvailability: ActorMethod<[Id], Array<AvailabilityEntry>>;
-  getSitterProfile: ActorMethod<[Id], Public>;
-  getSitterServiceRates: ActorMethod<[Id], Array<Public__1>>;
-  getStripeSessionStatus: ActorMethod<[string], StripeSessionStatus>;
-  getUserProfile: ActorMethod<[Principal], [] | [UserProfile]>;
-  isAdminAssigned: ActorMethod<[], boolean>;
-  isCallerAdmin: ActorMethod<[], boolean>;
-  isStripeConfigured: ActorMethod<[], boolean>;
-  postServiceLog: ActorMethod<[Creation], Public__2>;
-  saveCallerUserProfile: ActorMethod<[UserProfile], undefined>;
-  setSitterAvailability: ActorMethod<[Id, Array<AvailabilityEntry>], undefined>;
-  setSitterServiceRates: ActorMethod<[Id, Array<Public__1>], undefined>;
-  setStripeConfiguration: ActorMethod<[StripeConfiguration], undefined>;
-  submitReview: ActorMethod<[Id, number], undefined>;
-  transform: ActorMethod<[TransformationInput], TransformationOutput>;
-  updateBookingStatus: ActorMethod<
-    [Id, { cancelled: null } | { completed: null } | { confirmed: null }],
+  >,
+  'createPayment' : ActorMethod<[Creation__2], Public__3>,
+  'createSitterProfile' : ActorMethod<[Creation__1], Public>,
+  'deleteSitterProfile' : ActorMethod<[Id], undefined>,
+  'getActiveSitters' : ActorMethod<[], Array<Public>>,
+  'getAllBookings' : ActorMethod<[], Array<Public__4>>,
+  'getAllPayments' : ActorMethod<[], Array<Public__3>>,
+  'getAllSitters' : ActorMethod<[], Array<Public>>,
+  'getBookingsByClientEmail' : ActorMethod<[string], Array<Public__4>>,
+  'getBookingsByClientPhone' : ActorMethod<[string], Array<Public__4>>,
+  'getBookingsBySitter' : ActorMethod<[Id], Array<Public__4>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getMessages' : ActorMethod<[Id], Array<Message>>,
+  'getPayment' : ActorMethod<[Id], [] | [Public__3]>,
+  'getPaymentsByBookingIds' : ActorMethod<[Array<string>], Array<Public__3>>,
+  'getServiceLogsByBooking' : ActorMethod<[Id], Array<Public__2>>,
+  'getSitterAvailability' : ActorMethod<[Id], Array<AvailabilityEntry>>,
+  'getSitterProfile' : ActorMethod<[Id], Public>,
+  'getSitterServiceRates' : ActorMethod<[Id], Array<Public__1>>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isAdminAssigned' : ActorMethod<[], boolean>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
+  'postServiceLog' : ActorMethod<[Creation], Public__2>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setSitterAvailability' : ActorMethod<
+    [Id, Array<AvailabilityEntry>],
     undefined
-  >;
-  updatePaymentSplits: ActorMethod<[UpdateSplits], undefined>;
-  updateServiceLogStopTime: ActorMethod<[UpdateStopTime], undefined>;
-  updateSitterProfile: ActorMethod<[Update], Public>;
+  >,
+  'setSitterServiceRates' : ActorMethod<[Id, Array<Public__1>], undefined>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'submitReview' : ActorMethod<[Id, number], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateBookingStatus' : ActorMethod<
+    [
+      Id,
+      { 'cancelled' : null } |
+        { 'completed' : null } |
+        { 'confirmed' : null },
+    ],
+    undefined
+  >,
+  'updatePaymentSplits' : ActorMethod<[UpdateSplits], undefined>,
+  'updateServiceLogStopTime' : ActorMethod<[UpdateStopTime], undefined>,
+  'updateSitterProfile' : ActorMethod<[Update], Public>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
