@@ -629,6 +629,8 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  // Step 6: T&C acceptance
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1660,6 +1662,41 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                   <span className="font-bold text-primary">${totalCost}</span>
                 </div>
               </div>
+
+              {/* T&C acceptance */}
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/40 border border-border">
+                <input
+                  id="booking-terms"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                  data-ocid="booking.terms_checkbox"
+                />
+                <label
+                  htmlFor="booking-terms"
+                  className="text-sm text-muted-foreground leading-relaxed cursor-pointer select-none"
+                >
+                  I have read and agree to Pawspective's{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("terms")}
+                    className="text-primary underline hover:text-primary/80 transition-colors"
+                  >
+                    Terms &amp; Conditions
+                  </button>{" "}
+                  and{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("privacy")}
+                    className="text-primary underline hover:text-primary/80 transition-colors"
+                  >
+                    Privacy Policy
+                  </button>
+                  . I understand that Pawspective is a marketplace and does not
+                  conduct background checks on sitters.
+                </label>
+              </div>
             </div>
           )}
 
@@ -1802,7 +1839,7 @@ export default function SitterDetailPage({ sitterId, navigate }: Props) {
                 <Button
                   data-ocid="booking.submit_button"
                   onClick={handleSubmit}
-                  disabled={createBooking.isPending}
+                  disabled={createBooking.isPending || !agreedToTerms}
                   className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
                 >
                   {createBooking.isPending ? (

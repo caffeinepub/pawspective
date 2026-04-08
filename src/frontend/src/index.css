@@ -19,53 +19,54 @@
 @layer base {
   :root {
     --radius: 0.75rem;
-    --background: 0.97 0.008 75;
+    /* 2. COLOR PALETTE DEEPENING — warmer near-white surfaces */
+    --background: 0.975 0.006 60;
     --foreground: 0.13 0.02 255;
-    --card: 1 0 0;
+    --card: 0.995 0.003 60;
     --card-foreground: 0.13 0.02 255;
-    --popover: 1 0 0;
+    --popover: 0.995 0.003 60;
     --popover-foreground: 0.13 0.02 255;
     --primary: 0.45 0.16 255;
     --primary-foreground: 0.99 0 0;
     --secondary: 0.93 0.025 255;
     --secondary-foreground: 0.45 0.16 255;
-    --muted: 0.94 0.01 75;
+    --muted: 0.94 0.02 255;
     --muted-foreground: 0.5 0.02 75;
     --accent: 0.72 0.18 55;
     --accent-foreground: 0.15 0.02 55;
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: 0.985 0 0;
-    --border: 0.91 0.01 75;
-    --input: 0.91 0.01 75;
+    --border: 0.88 0.015 255;
+    --input: 0.88 0.015 255;
     --ring: 0.45 0.16 255;
     --chart-1: 0.646 0.222 41.116;
     --chart-2: 0.6 0.118 184.704;
     --chart-3: 0.398 0.07 227.392;
     --chart-4: 0.828 0.189 84.429;
     --chart-5: 0.769 0.188 70.08;
-    --sidebar: 0.97 0.008 75;
+    --sidebar: 0.975 0.006 60;
     --sidebar-foreground: 0.13 0.02 255;
     --sidebar-primary: 0.45 0.16 255;
     --sidebar-primary-foreground: 0.99 0 0;
     --sidebar-accent: 0.93 0.025 255;
     --sidebar-accent-foreground: 0.45 0.16 255;
-    --sidebar-border: 0.91 0.01 75;
+    --sidebar-border: 0.88 0.015 255;
     --sidebar-ring: 0.45 0.16 255;
   }
 
-  /* Item 11: Dark mode OKLCH tokens */
+  /* Dark mode — rich slate, not flat black */
   .dark {
-    --background: 0.13 0.02 265;
+    --background: 0.115 0.025 265;
     --foreground: 0.97 0.008 75;
-    --card: 0.18 0.03 265;
+    --card: 0.16 0.028 265;
     --card-foreground: 0.97 0.008 75;
-    --popover: 0.18 0.03 265;
+    --popover: 0.16 0.028 265;
     --popover-foreground: 0.97 0.008 75;
     --primary: 0.58 0.18 255;
     --primary-foreground: 0.99 0 0;
     --secondary: 0.25 0.04 265;
     --secondary-foreground: 0.8 0.01 255;
-    --muted: 0.22 0.03 265;
+    --muted: 0.22 0.035 265;
     --muted-foreground: 0.6 0.02 75;
     --accent: 0.72 0.18 55;
     --accent-foreground: 0.15 0.02 55;
@@ -96,62 +97,49 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    /* 1. TYPOGRAPHY — body copy baseline */
+    font-size: 1rem;
+    line-height: 1.7;
   }
 
-  h1,
-  h2,
-  h3,
+  /* 1. TYPOGRAPHY SCALE — premium heading hierarchy */
+  h1 {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: clamp(1.875rem, 3.5vw, 2.75rem);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-size: clamp(1.375rem, 2vw, 1.75rem);
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
   h4,
   h5,
   h6 {
     font-family: "Bricolage Grotesque", system-ui, sans-serif;
   }
-}
 
-@layer utilities {
-  .safe-area-pb {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  /* Premium transitions */
-  .transition-smooth {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Lead paragraph */
+  p.lead {
+    font-size: 1.125rem;
+    line-height: 1.75;
+    color: oklch(var(--foreground) / 0.8);
   }
 
-  /* Card hover lift */
-  .card-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px -8px oklch(0.45 0.16 255 / 0.18), 0 4px 16px -4px
-      oklch(0 0 0 / 0.08);
-  }
-
-  /* Premium shadow */
-  .shadow-premium {
-    box-shadow: 0 1px 3px oklch(0 0 0 / 0.06), 0 4px 12px oklch(0 0 0 / 0.06), 0
-      8px 24px -4px oklch(0 0 0 / 0.04);
-  }
-  .shadow-premium-hover:hover {
-    box-shadow: 0 4px 16px oklch(0 0 0 / 0.08), 0 12px 32px -4px
-      oklch(0 0 0 / 0.08);
-  }
-
-  /* Gradient text */
-  .text-gradient-primary {
-    background: linear-gradient(
-      135deg,
-      oklch(0.55 0.2 255),
-      oklch(0.65 0.22 285)
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-}
-
-@layer base {
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
@@ -167,5 +155,143 @@
   button,
   a {
     transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+}
+
+@layer utilities {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ─── Premium transitions ──────────────────────────────────── */
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ─── Card hover lift (original — keep untouched) ─────────── */
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px -8px oklch(0.45 0.16 255 / 0.18), 0 4px 16px -4px
+      oklch(0 0 0 / 0.08);
+  }
+
+  /* ─── Premium shadow (original — keep untouched) ──────────── */
+  .shadow-premium {
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.06), 0 4px 12px oklch(0 0 0 / 0.06), 0
+      8px 24px -4px oklch(0 0 0 / 0.04);
+  }
+  .shadow-premium-hover:hover {
+    box-shadow: 0 4px 16px oklch(0 0 0 / 0.08), 0 12px 32px -4px
+      oklch(0 0 0 / 0.08);
+  }
+
+  /* ─── Gradient text ────────────────────────────────────────── */
+  .text-gradient-primary {
+    background: linear-gradient(
+      135deg,
+      oklch(0.55 0.2 255),
+      oklch(0.65 0.22 285)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── 3. GLASS MORPHISM ────────────────────────────────────── */
+  .glass-card {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background: oklch(1 0 0 / 0.72);
+    border: 1px solid oklch(1 0 0 / 0.25);
+    box-shadow: 0 8px 32px oklch(0.45 0.16 255 / 0.08), 0 2px 8px
+      oklch(0 0 0 / 0.06);
+  }
+
+  .dark .glass-card {
+    background: oklch(0.18 0.03 265 / 0.75);
+    border: 1px solid oklch(1 0 0 / 0.08);
+  }
+
+  /* ─── Frosted nav ──────────────────────────────────────────── */
+  .frosted-nav {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: oklch(0.99 0.003 60 / 0.85);
+    border-bottom: 1px solid oklch(0.88 0.015 255 / 0.6);
+  }
+
+  .dark .frosted-nav {
+    background: oklch(0.13 0.025 265 / 0.88);
+    border-bottom-color: oklch(1 0 0 / 0.08);
+  }
+
+  /* ─── Card lift — spring spring feel ──────────────────────── */
+  .card-lift {
+    transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow
+      250ms ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 20px 60px -12px oklch(0.45 0.16 255 / 0.22), 0 8px 24px -4px
+      oklch(0 0 0 / 0.1);
+  }
+
+  /* ─── Button press micro-interaction ──────────────────────── */
+  .btn-press {
+    transition: transform 150ms ease, box-shadow 150ms ease;
+  }
+  .btn-press:active {
+    transform: scale(0.97);
+  }
+
+  /* ─── 4. PAGE TRANSITION ───────────────────────────────────── */
+  .page-enter {
+    animation: pageEnter 0.25s ease-out both;
+  }
+
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ─── 5. SKELETON SHIMMER ──────────────────────────────────── */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.92 0.01 255) 0%,
+      oklch(0.96 0.005 60) 50%,
+      oklch(0.92 0.01 255) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* ─── 6. SECTION SPACING ───────────────────────────────────── */
+  .section-gap {
+    padding-top: clamp(3rem, 6vw, 5rem);
+    padding-bottom: clamp(3rem, 6vw, 5rem);
+  }
+
+  .section-gap-sm {
+    padding-top: clamp(2rem, 4vw, 3.5rem);
+    padding-bottom: clamp(2rem, 4vw, 3.5rem);
   }
 }

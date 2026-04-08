@@ -6,9 +6,11 @@ import BookingLookupPage from "./pages/BookingLookupPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import SitterApplicationPage from "./pages/SitterApplicationPage";
 import SitterDashboard from "./pages/SitterDashboard";
 import SitterDetailPage from "./pages/SitterDetailPage";
+import TermsPage from "./pages/TermsPage";
 
 export type View =
   | "home"
@@ -18,16 +20,16 @@ export type View =
   | "sitter-dashboard"
   | "admin-dashboard"
   | "sitter-apply"
-  | "login";
+  | "login"
+  | "terms"
+  | "privacy";
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>("home");
   const [selectedSitterId, setSelectedSitterId] = useState<bigint | null>(null);
   const [clientEmail, setClientEmail] = useState<string>("");
-  // Item 11: dark mode state
   const [darkMode, setDarkMode] = useState(false);
 
-  // Item 11: sync dark class to <html>
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
@@ -42,39 +44,67 @@ export default function App() {
   return (
     <>
       {currentView === "home" && (
-        <HomePage
-          navigate={navigate}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-        />
+        <div key="home" className="page-enter">
+          <HomePage
+            navigate={navigate}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
+        </div>
       )}
       {currentView === "sitter-detail" && selectedSitterId !== null && (
-        <SitterDetailPage sitterId={selectedSitterId} navigate={navigate} />
+        <div key="sitter-detail" className="page-enter">
+          <SitterDetailPage sitterId={selectedSitterId} navigate={navigate} />
+        </div>
       )}
       {currentView === "booking-lookup" && (
-        <BookingLookupPage navigate={navigate} />
+        <div key="booking-lookup" className="page-enter">
+          <BookingLookupPage navigate={navigate} />
+        </div>
       )}
       {currentView === "client-dashboard" && (
-        <ClientDashboard navigate={navigate} initialEmail={clientEmail} />
+        <div key="client-dashboard" className="page-enter">
+          <ClientDashboard navigate={navigate} initialEmail={clientEmail} />
+        </div>
       )}
       {currentView === "sitter-dashboard" && (
-        <SitterDashboard
-          navigate={navigate}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-        />
+        <div key="sitter-dashboard" className="page-enter">
+          <SitterDashboard
+            navigate={navigate}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
+        </div>
       )}
       {currentView === "admin-dashboard" && (
-        <AdminDashboard
-          navigate={navigate}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-        />
+        <div key="admin-dashboard" className="page-enter">
+          <AdminDashboard
+            navigate={navigate}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
+        </div>
       )}
       {currentView === "sitter-apply" && (
-        <SitterApplicationPage navigate={navigate} />
+        <div key="sitter-apply" className="page-enter">
+          <SitterApplicationPage navigate={navigate} />
+        </div>
       )}
-      {currentView === "login" && <LoginPage navigate={navigate} />}
+      {currentView === "login" && (
+        <div key="login" className="page-enter">
+          <LoginPage navigate={navigate} />
+        </div>
+      )}
+      {currentView === "terms" && (
+        <div key="terms" className="page-enter">
+          <TermsPage navigate={navigate} />
+        </div>
+      )}
+      {currentView === "privacy" && (
+        <div key="privacy" className="page-enter">
+          <PrivacyPage navigate={navigate} />
+        </div>
+      )}
       <MobileNav currentView={currentView} navigate={navigate} />
       <Toaster richColors position="top-right" />
     </>

@@ -140,6 +140,7 @@ export default function SitterApplicationPage({ navigate }: Props) {
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const principal = identity?.getPrincipal();
   const myProfile = principal
@@ -525,7 +526,8 @@ export default function SitterApplicationPage({ navigate }: Props) {
     form.name.trim() && form.location.trim() && form.bio.trim();
   const canProceedStep2 =
     form.experience && form.ownPets && form.whyPawspective.trim();
-  const canSubmit = form.services.length > 0 && form.hourlyRate;
+  const canSubmit =
+    form.services.length > 0 && form.hourlyRate && agreedToTerms;
 
   return (
     <div
@@ -824,6 +826,41 @@ export default function SitterApplicationPage({ navigate }: Props) {
                         You can set per-service rates in your dashboard after
                         approval.
                       </p>
+                    </div>
+
+                    {/* Terms & Conditions acceptance */}
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/15">
+                      <Checkbox
+                        id="sitter-terms"
+                        checked={agreedToTerms}
+                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                        className="mt-0.5 border-white/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        data-ocid="sitter-apply.terms_checkbox"
+                      />
+                      <label
+                        htmlFor="sitter-terms"
+                        className="text-sm text-white/70 leading-relaxed cursor-pointer select-none"
+                      >
+                        I have read and agree to the{" "}
+                        <button
+                          type="button"
+                          onClick={() => navigate("terms")}
+                          className="text-amber-300 underline hover:text-amber-200 transition-colors"
+                        >
+                          Terms &amp; Conditions
+                        </button>{" "}
+                        and{" "}
+                        <button
+                          type="button"
+                          onClick={() => navigate("privacy")}
+                          className="text-amber-300 underline hover:text-amber-200 transition-colors"
+                        >
+                          Privacy Policy
+                        </button>
+                        . I understand that Pawspective does not conduct
+                        background checks and that I am an independent
+                        contractor, not an employee.
+                      </label>
                     </div>
 
                     <Button

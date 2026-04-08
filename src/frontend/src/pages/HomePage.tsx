@@ -9,19 +9,16 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CheckCircle,
+  CalendarCheck,
   Heart,
   Moon,
   PawPrint,
   Search,
-  Shield,
-  ShieldCheck,
   Sparkles,
   Star,
   Sun,
-  Trophy,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { View } from "../App";
 import type { Public } from "../backend.d";
 import SitterCard from "../components/SitterCard";
@@ -38,20 +35,24 @@ const POPULAR_SERVICES = [
 
 const TRUST_ITEMS = [
   {
-    icon: ShieldCheck,
-    label: "Background Checked",
-    sub: "Every sitter verified",
+    icon: Star,
+    label: "Reviewed & Rated",
+    sub: "Real client reviews",
   },
-  { icon: Trophy, label: "5-Star Rated", sub: "Top-rated caregivers" },
-  { icon: Heart, label: "Insured & Bonded", sub: "Peace of mind included" },
-  { icon: CheckCircle, label: "Flexible Booking", sub: "Cancel anytime" },
+  {
+    icon: Heart,
+    label: "Pet-Passionate Sitters",
+    sub: "Genuine animal lovers",
+  },
+  { icon: CalendarCheck, label: "Flexible Booking", sub: "Cancel anytime" },
+  { icon: PawPrint, label: "Multi-Pet Care", sub: "All breeds & species" },
 ];
 
 const HOW_IT_WORKS = [
   {
     step: "01",
     title: "Browse Sitters",
-    desc: "Explore verified sitters in your area. Read reviews, check availability, and compare rates.",
+    desc: "Explore sitters in your area. Read reviews, check availability, and compare rates.",
   },
   {
     step: "02",
@@ -65,6 +66,8 @@ const HOW_IT_WORKS = [
   },
 ];
 
+const SKELETON_COUNT = 8;
+
 interface Props {
   navigate: (view: View, sitterId?: bigint) => void;
   darkMode?: boolean;
@@ -75,6 +78,13 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
   const { data: sitters = [], isLoading } = useActiveSitters();
   const [locationFilter, setLocationFilter] = useState("");
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const filtered = (sitters as Public[]).filter((s) => {
     const matchLoc =
@@ -91,7 +101,11 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* NAV */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+      <header
+        className={`sticky top-0 z-50 frosted-nav transition-all duration-300 ${
+          scrolled ? "shadow-md" : "shadow-none border-b-transparent"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <button
             type="button"
@@ -168,21 +182,22 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
       </header>
 
       <main className="flex-1">
-        {/* HERO — full bleed with photo */}
-        <section className="relative overflow-hidden min-h-[600px] md:min-h-[680px] flex items-center">
-          {/* Background photo */}
+        {/* HERO — full bleed Unsplash photo */}
+        <section className="relative overflow-hidden min-h-[680px] md:min-h-[780px] flex items-center">
+          {/* Background photo — real Unsplash */}
           <div className="absolute inset-0">
             <img
-              src="/assets/generated/pawspective-hero.dim_1200x800.jpg"
-              alt="Happy pets with their sitter"
-              className="w-full h-full object-cover"
+              src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=1920&q=85&auto=format&fit=crop"
+              alt="Happy dog with its sitter outdoors"
+              className="w-full h-full object-cover object-center"
+              loading="eager"
             />
-            {/* Gradient overlay */}
+            {/* Cinematic dark gradient overlay */}
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(105deg, oklch(0.18 0.18 265 / 0.92) 0%, oklch(0.22 0.16 275 / 0.85) 45%, oklch(0.28 0.12 255 / 0.6) 100%)",
+                  "linear-gradient(105deg, oklch(0.13 0.04 255 / 0.88) 0%, oklch(0.18 0.06 265 / 0.80) 40%, oklch(0.22 0.05 255 / 0.55) 100%)",
               }}
             />
           </div>
@@ -192,19 +207,28 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
               {/* Eyebrow */}
               <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white/90 text-sm font-semibold px-4 py-1.5 rounded-full mb-6 border border-white/15">
                 <Sparkles size={13} className="text-amber-300" />
-                Trusted by thousands of pet families
+                Premium Pet Care, On Your Schedule
               </div>
 
-              {/* Headline */}
-              <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-[1.03] mb-5">
+              {/* Headline — gradient text */}
+              <h1
+                className="font-display text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.03] mb-5"
+                style={{
+                  background:
+                    "linear-gradient(to right, #ffffff, rgba(255,255,255,0.9), oklch(0.9 0.12 55))",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
                 Pet Care,
                 <br />
-                <span style={{ color: "oklch(0.84 0.18 55)" }}>Perfected.</span>
+                Perfected.
               </h1>
 
-              <p className="text-white/75 text-lg md:text-xl max-w-xl leading-relaxed mb-9">
-                Find trusted, background-checked sitters in your neighborhood.
-                Book in minutes, track every visit in real-time.
+              <p className="text-white/80 text-lg md:text-xl max-w-lg leading-relaxed mb-9">
+                Find passionate, trusted sitters in your neighborhood. Book in
+                minutes, track every visit in real-time.
               </p>
 
               {/* CTAs */}
@@ -217,11 +241,7 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
                       .getElementById("sitters-section")
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
-                  className="rounded-full px-8 text-base font-bold shadow-lg hover:opacity-95 transition-opacity h-13"
-                  style={{
-                    backgroundColor: "oklch(0.72 0.18 55)",
-                    color: "oklch(0.12 0.02 55)",
-                  }}
+                  className="rounded-full px-8 text-base font-bold h-13 bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40 transition-all duration-200 hover:-translate-y-0.5"
                 >
                   Find a Sitter
                 </Button>
@@ -243,51 +263,21 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
                   Track My Booking →
                 </Button>
               </div>
-
-              {/* Social proof micro-stats */}
-              <div className="flex items-center gap-5 mt-8 flex-wrap">
-                <div className="flex -space-x-2">
-                  {["BG", "SL", "KM", "JR"].map((initials) => (
-                    <div
-                      key={initials}
-                      className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 border-2 border-white/20 flex items-center justify-center text-[10px] font-bold text-white"
-                    >
-                      {initials}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-white/70 text-sm">
-                  <span className="text-white font-semibold">
-                    500+ pet families
-                  </span>{" "}
-                  trust Pawspective
-                </p>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star
-                      key={i}
-                      size={14}
-                      className="fill-amber-400 text-amber-400"
-                    />
-                  ))}
-                  <span className="text-white/70 text-sm ml-1">5.0 avg</span>
-                </div>
-              </div>
             </div>
           </div>
         </section>
 
         {/* TRUST BAR */}
-        <section className="bg-card border-b border-border">
+        <section className="bg-background/50 backdrop-blur-sm border-b border-border/40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {TRUST_ITEMS.map(({ icon: Icon, label, sub }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Icon size={18} className="text-primary" />
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                    <Icon size={18} className="text-accent" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">
+                    <p className="text-sm font-bold text-foreground leading-tight">
                       {label}
                     </p>
                     <p className="text-xs text-muted-foreground">{sub}</p>
@@ -299,21 +289,26 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
         </section>
 
         {/* POPULAR SERVICES */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-lg font-bold text-foreground">
-              Popular Services
-            </h2>
+        <section className="section-gap max-w-7xl mx-auto px-4 sm:px-6 pb-4">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                Popular Services
+              </h2>
+              <p className="text-muted-foreground mt-1.5 text-base">
+                Everything your pet needs, all in one place
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               data-ocid="services.filter.tab"
               onClick={() => setServiceFilter("all")}
-              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-150 ${
+              className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all duration-150 ${
                 serviceFilter === "all"
                   ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary/70"
+                  : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary/70 hover:ring-2 hover:ring-primary/20"
               }`}
             >
               All Services
@@ -328,10 +323,10 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
                     serviceFilter === svc.filter ? "all" : svc.filter,
                   )
                 }
-                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-150 ${
+                className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all duration-150 ${
                   serviceFilter === svc.filter
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary/70"
+                    : "bg-card text-foreground border-border hover:border-primary/40 hover:bg-secondary/70 hover:ring-2 hover:ring-primary/20"
                 }`}
               >
                 {svc.label}
@@ -347,12 +342,11 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
         >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
             <div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground tracking-tight">
                 Meet Our Sitters
               </h2>
               <p className="text-muted-foreground mt-1.5 text-base">
-                Hand-picked, verified caregivers ready to look after your furry
-                family
+                Hand-picked caregivers ready to look after your furry family
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -391,13 +385,13 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
           </div>
 
           {isLoading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {["s1", "s2", "s3"].map((k) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: SKELETON_COUNT }, (_, k) => k).map((k) => (
                 <div
                   key={k}
                   className="rounded-2xl border border-border overflow-hidden bg-card"
                 >
-                  <Skeleton className="h-52 w-full" />
+                  <Skeleton className="h-56 w-full" />
                   <div className="p-4 space-y-3">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
@@ -440,7 +434,7 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
           )}
 
           {!isLoading && filtered.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filtered.map((sitter, i) => (
                 <SitterCard
                   key={sitter.id.toString()}
@@ -496,28 +490,22 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
           </div>
         </section>
 
-        {/* CTA BANNER */}
-        <section
-          className="py-16 relative overflow-hidden"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.28 0.18 265) 0%, oklch(0.38 0.22 280) 100%)",
-          }}
-        >
+        {/* CTA BANNER — Become a Sitter */}
+        <section className="py-16 relative overflow-hidden bg-gradient-to-br from-primary/5 via-transparent to-accent/5">
           <div
-            className="absolute inset-0 opacity-10"
+            className="absolute inset-0 opacity-10 pointer-events-none"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 80% 50%, oklch(0.72 0.18 55) 0%, transparent 60%)",
             }}
           />
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
               Ready to find your perfect pet sitter?
             </h2>
-            <p className="text-white/70 text-base mb-8 max-w-xl mx-auto">
-              Join thousands of happy pet owners who trust Pawspective for
-              premium, reliable pet care.
+            <p className="text-muted-foreground text-base mb-8 max-w-xl mx-auto">
+              Connect with passionate, caring sitters who treat your pets like
+              family.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
               <Button
@@ -527,11 +515,7 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
                     .getElementById("sitters-section")
                     ?.scrollIntoView({ behavior: "smooth" })
                 }
-                className="rounded-full px-8 font-bold text-base h-13"
-                style={{
-                  backgroundColor: "oklch(0.72 0.18 55)",
-                  color: "oklch(0.12 0.02 55)",
-                }}
+                className="rounded-full px-8 font-bold text-base h-13 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Browse Sitters
               </Button>
@@ -540,7 +524,7 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
                 variant="outline"
                 data-ocid="home.sitter_apply.button"
                 onClick={() => navigate("sitter-apply")}
-                className="rounded-full px-8 font-semibold text-base border-white/25 text-white bg-white/10 hover:bg-white/18 h-13"
+                className="rounded-full px-8 font-semibold text-base border-primary/30 text-primary hover:bg-primary/5 h-13"
               >
                 Become a Sitter
               </Button>
@@ -568,7 +552,7 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
               </div>
               <p className="text-sm text-white/50 max-w-xs leading-relaxed">
                 Premium pet care marketplace connecting pet families with
-                trusted, verified sitters.
+                trusted, caring sitters.
               </p>
             </div>
 
@@ -632,9 +616,25 @@ export default function HomePage({ navigate, darkMode, setDarkMode }: Props) {
           </div>
 
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-white/35">
-              © {new Date().getFullYear()} Pawspective. All rights reserved.
-            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <p className="text-xs text-white/35">
+                © {new Date().getFullYear()} Pawspective. All rights reserved.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("terms")}
+                className="text-xs text-white/40 hover:text-white/70 underline transition-colors"
+              >
+                Terms &amp; Conditions
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("privacy")}
+                className="text-xs text-white/40 hover:text-white/70 underline transition-colors"
+              >
+                Privacy Policy
+              </button>
+            </div>
             <p className="text-xs text-white/35">
               Built with{" "}
               <a

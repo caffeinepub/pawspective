@@ -16,7 +16,7 @@ const NAV_ITEMS = [
 export default function MobileNav({ currentView, navigate }: Props) {
   return (
     <>
-      {/* Item 10: Floating Action Button for quick booking */}
+      {/* Quick Book FAB */}
       <div className="fixed bottom-20 right-4 z-50 md:hidden">
         <button
           type="button"
@@ -31,15 +31,19 @@ export default function MobileNav({ currentView, navigate }: Props) {
               100,
             );
           }}
-          className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+          className="w-12 h-12 rounded-full bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40 hover:scale-105 flex items-center justify-center active:scale-95 transition-all duration-200"
           aria-label="Quick Book"
         >
-          <Plus size={22} />
+          <Plus size={20} />
         </button>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/95 backdrop-blur-md border-t border-border safe-area-pb">
-        <div className="flex items-center justify-around px-2 py-2">
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden frosted-nav border-t border-border/40 safe-area-pb relative overflow-visible">
+        {/* Subtle top fade gradient */}
+        <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-background/50 to-transparent pointer-events-none" />
+
+        <div className="flex items-center justify-around py-2 px-2 max-w-md mx-auto">
           {NAV_ITEMS.map(({ view, label, icon: Icon }) => {
             const isActive = currentView === view;
             return (
@@ -48,23 +52,24 @@ export default function MobileNav({ currentView, navigate }: Props) {
                 type="button"
                 data-ocid={`nav.${view}.link`}
                 onClick={() => navigate(view)}
-                className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all min-w-[60px]"
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-2xl transition-all duration-200 min-w-[60px] ${
+                  isActive
+                    ? "bg-primary/12 dark:bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
               >
-                {/* Item 10: filled pill behind active icon */}
-                <div
-                  className={`w-10 h-8 rounded-full flex items-center justify-center transition-all ${
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                <span
+                  className={`transition-transform duration-200 ${
+                    isActive ? "scale-110 text-primary" : "scale-100"
                   }`}
                 >
-                  <Icon size={17} />
-                </div>
+                  <Icon size={18} strokeWidth={isActive ? 2.5 : 1.8} />
+                </span>
                 <span
-                  className={`text-[10px] font-medium leading-none ${
+                  className={`text-xs leading-none transition-all duration-200 ${
                     isActive
-                      ? "text-primary font-semibold"
-                      : "text-muted-foreground"
+                      ? "font-semibold text-primary"
+                      : "font-normal text-muted-foreground"
                   }`}
                 >
                   {label}

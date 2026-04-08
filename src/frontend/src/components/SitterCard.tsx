@@ -70,28 +70,16 @@ export default function SitterCard({
     <button
       type="button"
       data-ocid={`sitters.item.${index + 1}`}
-      className="bg-card rounded-2xl overflow-hidden group cursor-pointer border border-border text-left w-full transition-all duration-200 hover:-translate-y-1"
-      style={{
-        boxShadow:
-          "0 1px 3px oklch(0 0 0 / 0.06), 0 4px 12px oklch(0 0 0 / 0.05)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.boxShadow =
-          "0 4px 16px oklch(0 0 0 / 0.1), 0 12px 32px -4px oklch(0.45 0.16 255 / 0.12)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.boxShadow =
-          "0 1px 3px oklch(0 0 0 / 0.06), 0 4px 12px oklch(0 0 0 / 0.05)";
-      }}
+      className="group relative bg-card rounded-2xl overflow-hidden card-lift border border-border/50 shadow-sm text-left w-full cursor-pointer"
       onClick={() => navigate("sitter-detail", sitter.id)}
     >
-      {/* Photo — taller aspect ratio for premium feel */}
-      <div className="relative h-52 overflow-hidden">
+      {/* PHOTO AREA — full-width crop, Rover-style */}
+      <div className="relative h-56 w-full overflow-hidden">
         {sitter.photoUrl ? (
           <img
             src={sitter.photoUrl}
             alt={sitter.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
           <div
@@ -103,64 +91,67 @@ export default function SitterCard({
           </div>
         )}
 
-        {/* Overlay gradient — stronger at bottom for readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {/* Bottom gradient overlay — name/location float over photo */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
         {/* Rate badge — top right */}
-        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+        <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-full border border-white/20">
           From ${Number(sitter.hourlyRate)}/hr
         </div>
 
-        {/* Verification badge — top left if applicable */}
+        {/* Verification badge — top left */}
         {displayBadges.length > 0 &&
           displayBadges[0] === "Background Checked" && (
-            <div className="absolute top-3 left-3 flex items-center gap-1 bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-              <ShieldCheck size={10} />
+            <div className="absolute top-3 left-3 bg-emerald-500/90 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <ShieldCheck size={11} />
               Verified
             </div>
           )}
 
-        {/* Name + location — bottom overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4">
+        {/* Name + location — on the photo overlay */}
+        <div className="absolute bottom-3 left-3 right-3">
           <h3 className="font-display font-bold text-white text-lg leading-tight">
             {sitter.name}
           </h3>
           {sitter.location && (
-            <div className="flex items-center gap-1 text-white/75 text-xs mt-0.5">
-              <MapPin size={10} />
+            <div className="flex items-center gap-1 text-white/80 text-sm mt-0.5">
+              <MapPin size={11} />
               <span>{sitter.location}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Card body */}
+      {/* CARD BODY */}
       <div className="p-4 space-y-3">
         {/* Rating row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  size={13}
-                  className={
-                    i <= Math.round(sitter.rating)
-                      ? "fill-accent text-accent"
-                      : "text-muted-foreground/40"
-                  }
-                />
-              ))}
-            </div>
-            <span className="text-xs font-semibold text-foreground">
-              {ratingDisplay ?? "New"}
-            </span>
-            {reviewCount > 0 && (
-              <span className="text-xs text-muted-foreground">
-                ({reviewCount} reviews)
-              </span>
-            )}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star
+                key={i}
+                size={13}
+                className={
+                  i <= Math.round(sitter.rating)
+                    ? "fill-accent text-accent"
+                    : "text-muted-foreground/30"
+                }
+              />
+            ))}
           </div>
+          <span className="text-xs font-semibold text-foreground">
+            {ratingDisplay ?? "New"}
+          </span>
+          {reviewCount > 0 && (
+            <span className="text-xs text-muted-foreground">
+              ({reviewCount} reviews)
+            </span>
+          )}
+          {!ratingDisplay && (
+            <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full ml-1">
+              New
+            </span>
+          )}
         </div>
 
         {/* Services */}
@@ -168,13 +159,13 @@ export default function SitterCard({
           {sitter.services.slice(0, 3).map((s) => (
             <span
               key={s}
-              className="text-xs bg-secondary text-secondary-foreground px-2.5 py-0.5 rounded-full font-medium"
+              className="text-xs bg-primary/8 text-primary px-2.5 py-1 rounded-full font-medium"
             >
               {s}
             </span>
           ))}
           {extraServices > 0 && (
-            <span className="text-xs bg-muted text-muted-foreground px-2.5 py-0.5 rounded-full">
+            <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">
               +{extraServices} more
             </span>
           )}
@@ -210,7 +201,7 @@ export default function SitterCard({
           className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm shadow-primary/20"
           size="sm"
         >
-          View Profile & Book
+          View Profile &amp; Book
         </Button>
       </div>
     </button>
